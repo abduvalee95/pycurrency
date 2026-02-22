@@ -1,0 +1,85 @@
+services:
+  - type: web
+    name: pycurrency
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.web.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/reports # Can be ignored or updated if needed
+    envVars:
+      - fromGroup: common-config
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postgres
+          property: connectionString
+      - key: WEBAPP_URL
+        value: "https://pycurrency.onrender.com" # Render avtomatik beradigan domen (nomiga qarab o'zgartirasiz)
+
+envVarGroups:
+  - name: common-config
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: APP_NAME
+        value: Exchange Accounting MVP
+      - key: DEBUG
+        value: "false"
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: AI_PROVIDER
+        value: deepseek
+      - key: TELEGRAM_WEBAPP_ENFORCE
+        value: "true"
+      - key: ALLOWED_TELEGRAM_IDS
+        value: ""
+      - key: BACKUPS_DIR
+        value: backups
+      - key: BACKUP_HOUR
+        value: "23"
+      - key: BACKUP_MINUTE
+        value: "55"
+      - key: BASE_CURRENCY_CODE
+        value: UZS
+      - key: TIMEZONE
+        value: Asia/Bishkek
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4.1-mini
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: OPENROUTER_REFERER
+        sync: false
+      - key: OPENROUTER_TITLE
+        value: Exchange Accounting MVP
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek-chat
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        value: gemini-2.0-flash
+      - key: GOOGLE_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+
+databases:
+  - name: postgres
+    databaseName: exchange_db
+    user: pycurrency
+    plan: free
+    postgresMajorVersion: "15"
+    ipAllowList: []
