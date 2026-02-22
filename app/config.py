@@ -55,6 +55,8 @@ class Settings(BaseSettings):
 
     base_currency_code: str = "UZS"
     timezone: str = "Asia/Bishkek"
+    
+    webapp_url: Optional[str] = None
 
 
 @lru_cache(maxsize=1)
