@@ -13,12 +13,18 @@ def validate_telegram_data(init_data: str) -> bool:
     settings = get_settings()
     token = settings.telegram_bot_token
     
+    if not token:
+        print("❌ AUTH ERROR: TELEGRAM_BOT_TOKEN is missing in settings!")
+        return False
+
     if not init_data:
+        print("❌ AUTH ERROR: init_data is empty!")
         return False
         
     try:
         parsed_data = dict(parse_qsl(init_data, keep_blank_values=True))
         if "hash" not in parsed_data:
+            print("❌ AUTH ERROR: No 'hash' in init_data")
             return False
 
         hash_value = parsed_data.pop("hash")
@@ -40,7 +46,11 @@ def validate_telegram_data(init_data: str) -> bool:
             digestmod=hashlib.sha256
         ).hexdigest()
         
-        return calculated_hash == hash_value
+        is_valid = calculated_hash == hash_value
+        if not is_valid:
+            print(f"❌ AUTH ERROR: Hash mismatch! Check if bot token is correct.")
+            
+        return is_valid
         
     except Exception:
         return False
