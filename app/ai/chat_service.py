@@ -84,7 +84,7 @@ class AIChatService:
             "- Pul KETSA (berdi+ga, chiqim, oldi+dan, chiqardi, ketdi) = OUTFLOW\n"
             "- 'berdim' = OUTFLOW (men berdim = pul ketdi)\n"
             "- 'berdi' = INFLOW (u berdi = pul keldi)\n"
-            "currency_code faqat: USD, RUB, UZS\n\n"
+            "currency_code faqat: USD, RUB, UZS, KGS, EUR\n\n"
 
             "3. O'CHIRISH - operator entry o'chirmoqchi bo'lsa "
             "(masalan: '#5 ni o'chir', 'entry 3 delete', '2-yozuvni o'chir'):\n"

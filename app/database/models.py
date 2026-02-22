@@ -92,7 +92,7 @@ class CashEntry(Base):
     __table_args__ = (
         CheckConstraint("amount > 0", name="ck_cash_entries_amount_positive"),
         CheckConstraint(
-            "currency_code IN ('USD', 'RUB', 'UZS')",
+            "currency_code IN ('USD', 'RUB', 'UZS', 'KGS', 'EUR')",
             name="ck_cash_entries_currency_code_allowed",
         ),
         CheckConstraint(

@@ -121,7 +121,7 @@ async def _handle_create_entry(message: Message, state: FSMContext, data: dict) 
         client_name = str(data.get("client_name", "")).strip()
         note = str(data.get("note", "")).strip() or None
 
-        if amount <= 0 or currency_code not in {"USD", "RUB", "UZS"} or flow_direction not in {"INFLOW", "OUTFLOW"}:
+        if amount <= 0 or currency_code not in {"USD", "RUB", "UZS", "KGS", "EUR"} or flow_direction not in {"INFLOW", "OUTFLOW"}:
             await message.answer("❌ AI noto'g'ri ma'lumot qaytardi. Qayta urinib ko'ring.")
             return
 

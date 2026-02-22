@@ -24,8 +24,8 @@ class EntryCreate(BaseModel):
     @classmethod
     def normalize_currency(cls, value: str) -> str:
         normalized = value.upper().strip()
-        if normalized not in {"USD", "RUB", "UZS"}:
-            raise ValueError("currency_code must be USD, RUB, or UZS")
+        if normalized not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
+            raise ValueError("currency_code must be USD, RUB, UZS, KGS, or EUR")
         return normalized
 
     @field_validator("flow_direction")

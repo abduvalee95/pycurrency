@@ -124,7 +124,7 @@ async def entry_amount(message: Message, state: FSMContext) -> None:
 
     await state.update_data(amount=str(amount))
     await state.set_state(ManualEntryStates.waiting_currency)
-    await message.answer("2/5 Currency kiriting: USD / RUB / UZS")
+    await message.answer("2/5 Currency kiriting: USD / RUB / UZS / KGS / EUR")
 
 
 @router.message(ManualEntryStates.waiting_currency)
@@ -135,8 +135,8 @@ async def entry_currency(message: Message, state: FSMContext) -> None:
         return
 
     currency = (message.text or "").strip().upper()
-    if currency not in {"USD", "RUB", "UZS"}:
-        await message.answer("Currency faqat USD, RUB yoki UZS bo'lishi kerak.")
+    if currency not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
+        await message.answer("Currency faqat USD, RUB, UZS, KGS yoki EUR bo'lishi kerak.")
         return
 
     await state.update_data(currency_code=currency)
