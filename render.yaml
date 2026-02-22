@@ -5,7 +5,7 @@ services:
     plan: free
     branch: main
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn app.web.app:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.web.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
     envVars:
       - fromGroup: common-config

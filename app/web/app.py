@@ -17,24 +17,49 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run migrations if on Render
-    if should_run_migrations():
-        await run_migrations()
+    print("🚀 Starting application lifespan...")
+    try:
+        # Run migrations if on Render
+        if should_run_migrations():
+            print("📦 Running database migrations...")
+            await run_migrations()
+            print("✅ Migrations completed.")
+            
+        # Initialize bot and dispatcher inside the async context to ensure event loop exists
+        print("🤖 Initializing Telegram Bot...")
+        if not settings.telegram_bot_token:
+            print("❌ ERROR: TELEGRAM_BOT_TOKEN is not set!")
+            # Don't crash the whole web server if bot fails, just log it
+            app.state.bot = None
+            yield
+            return
+
+        bot = Bot(token=settings.telegram_bot_token)
+        dp = Dispatcher(storage=MemoryStorage())
+        dp.include_router(main_router)
+        dp.include_router(ai_chat_router)
         
-    # Initialize bot and dispatcher inside the async context to ensure event loop exists
-    bot = Bot(token=settings.telegram_bot_token)
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(main_router)
-    dp.include_router(ai_chat_router)
-    
-    app.state.bot = bot
-    
-    # Run Aiogram polling in the background
-    polling_task = asyncio.create_task(dp.start_polling(bot))
-    yield
-    
-    polling_task.cancel()
-    await dp.stop_polling()
+        app.state.bot = bot
+        
+        # Run Aiogram polling in the background
+        print("📡 Starting bot polling...")
+        polling_task = asyncio.create_task(dp.start_polling(bot))
+        
+        print("✨ Application startup complete. Serving requests.")
+        yield
+        
+        print("🛑 Shutting down application...")
+        polling_task.cancel()
+        try:
+            await dp.stop_polling()
+        except Exception:
+            pass
+            
+    except Exception as e:
+        print(f"💥 CRITICAL STARTUP ERROR: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise e
 
 app = FastAPI(lifespan=lifespan, title="Currency Bot Dashboard API")
 
