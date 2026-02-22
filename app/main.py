@@ -8,6 +8,7 @@ from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.config import get_settings
 from app.database.session import db_manager
+from app.database.migrations import run_migrations, should_run_migrations
 from app.security.telegram_auth import require_api_auth
 from app.services.backup_service import BackupScheduler
 from app.web.router import router as web_router
@@ -21,6 +22,9 @@ async def lifespan(app: FastAPI):
     """
 
     settings = get_settings()
+    if should_run_migrations():
+        await run_migrations()
+
     backup_scheduler = BackupScheduler(db_manager.session_factory, settings)
     backup_scheduler.start()
 

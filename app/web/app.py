@@ -10,12 +10,17 @@ from fastapi.staticfiles import StaticFiles
 from app.bot.handlers.ai_chat import router as ai_chat_router
 from app.bot.handlers.main import router as main_router
 from app.config import get_settings
+from app.database.migrations import run_migrations, should_run_migrations
 from app.web.api import router as web_api_router
 
 settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Run migrations if on Render
+    if should_run_migrations():
+        await run_migrations()
+        
     # Initialize bot and dispatcher inside the async context to ensure event loop exists
     bot = Bot(token=settings.telegram_bot_token)
     dp = Dispatcher(storage=MemoryStorage())
