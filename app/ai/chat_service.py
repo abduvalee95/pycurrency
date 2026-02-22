@@ -83,20 +83,40 @@ class AIChatService:
             "1. SAVOL - operator savol bersa (balans, hisobot, mijozlar haqida):\n"
             '{"action": "text", "data": {"message": "javobingiz shu yerda"}}\n\n'
 
-            "2. YOZUV YARATISH - operator yangi entry yaratmoqchi bo'lsa "
-            "(masalan: 'Ali 1000 usd berdi', '500 rub chiqim Bekdan', 'Isa ga 200 usd berdim'):\n"
+            "2. YOZUV YARATISH - operator yangi entry yaratmoqchi bo'lsa:\n"
             '{"action": "create_entry", "data": {"amount": 1000, "currency_code": "USD", '
-            '"flow_direction": "INFLOW", "client_name": "Ali", "note": ""}}\n'
-            "flow_direction qoidalari:\n"
-            "- Pul KELSA (oldi, berdi, kirim, sotdi, keldi) = INFLOW\n"
-            "- Pul KETSA (berdi+ga, chiqim, oldi+dan, chiqardi, ketdi) = OUTFLOW\n"
-            "- 'berdim' = OUTFLOW (men berdim = pul ketdi)\n"
-            "- 'berdi' = INFLOW (u berdi = pul keldi)\n"
-            "currency_code faqat: USD, RUB, UZS, KGS, EUR\n\n"
+            '"flow_direction": "INFLOW", "client_name": "Ali", "note": ""}}\n\n'
 
-            "3. O'CHIRISH - operator entry o'chirmoqchi bo'lsa "
-            "(masalan: '#5 ni o'chir', 'entry 3 delete', '2-yozuvni o'chir'):\n"
-            '{"action": "delete_entry", "data": {"entry_id": 5}}\n\n'
+            "flow_direction QOIDALARI (JUDA MUHIM!):\n"
+            "INFLOW (kassaga pul KIRDI):\n"
+            "  - '[ism] berdi' = client pul berdi → INFLOW\n"
+            "  - '[ism]dan oldim/oldik' = biz clientdan oldik → INFLOW\n"
+            "  - '[ism] sotdi' = client bizga sotdi → INFLOW\n"
+            "  - 'kirim' = INFLOW\n"
+            "OUTFLOW (kassadan pul CHIQDI):\n"
+            "  - '[ism]ga berdim/berdik' = biz clientga berdik → OUTFLOW\n"
+            "  - '[ism] oldi' = client kassadan oldi → OUTFLOW\n"
+            "  - 'chiqim' = OUTFLOW\n"
+            "  - 'berdim' = men berdim = OUTFLOW\n\n"
+            "⚠️ DIQQAT: '[ism] oldi' DOIM OUTFLOW! Chunki client kassadan pul OLDI.\n"
+            "⚠️ '[ism] berdi' DOIM INFLOW! Chunki client kassaga pul BERDI.\n\n"
+
+            "VALYUTA QOIDALARI:\n"
+            "- 'som', 'сом', 'kgs' = KGS (asosiy valyuta)\n"
+            "- 'so\\'m', 'sum', 'uzs' = UZS\n"
+            "- 'dollar', '$', 'usd', 'дол' = USD\n"
+            "- 'rubl', 'rub', 'руб' = RUB\n"
+            "- 'evro', 'euro', 'eur', 'евро' = EUR\n"
+            "- Agar valyuta ko'rsatilmasa = KGS (asosiy valyuta)\n"
+            "Qo'llab-quvvatlanadigan valyutalar: USD, RUB, UZS, KGS, EUR\n\n"
+
+            "MIJOZ ISMI: Xabardagi birinchi ism doim client_name sifatida olinsin.\n\n"
+
+            "3. O'CHIRISH - operator entry o'chirmoqchi bo'lsa:\n"
+            "Misol xabarlar: '#5 o'chir', '#5 ni o'chir', 'entry 3 delete', "
+            "'3-ni o'chir', '5-yozuvni o'chir', 'delete 2', '1 ni ochir'\n"
+            '{"action": "delete_entry", "data": {"entry_id": 5}}\n'
+            "Agar xabarda '#' yoki 'entry' yoki raqam + 'o\\'chir/delete/ochir' bo'lsa = delete_entry\n\n"
 
             "QOIDALAR:\n"
             "- Javob FAQAT JSON bo'lsin, boshqa matn yo'q\n"
