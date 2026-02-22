@@ -20,3 +20,9 @@ class AIInputStates(StatesGroup):
     waiting_raw_text = State()
     waiting_client = State()
     waiting_confirm = State()
+
+
+class AIChatStates(StatesGroup):
+    """States for AI chat (free-form Q&A) mode."""
+
+    waiting_question = State()
