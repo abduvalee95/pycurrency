@@ -1,4 +1,4 @@
-"""Telegram bot application entrypoint."""
+"""Telegram bot dasturining kirish nuqtasi (entrypoint)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from app.config import get_settings
 
 
 async def run_bot() -> None:
-    """Run polling bot process."""
+    """Botni polling rejimida ishga tushirish jarayoni."""
 
     settings = get_settings()
     if not settings.telegram_bot_token:

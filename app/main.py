@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint."""
+"""FastAPI dasturining kirish nuqtasi (entrypoint)."""
 
 from contextlib import asynccontextmanager
 
@@ -15,7 +15,10 @@ from app.web.router import router as web_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage startup/shutdown hooks for shared resources."""
+    """
+    Ulashilgan resurslar (ma'lumotlar bazasi, zaxiralash) uchun ishga tushish 
+    va to'xtash (startup/shutdown) jarayonlarini boshqarish.
+    """
 
     settings = get_settings()
     backup_scheduler = BackupScheduler(db_manager.session_factory, settings)
@@ -38,6 +41,6 @@ register_exception_handlers(app)
 
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
-    """Simple health endpoint for uptime checks."""
+    """Dastur ishlash holatini tekshirish (uptime checks) uchun oddiy endpoint."""
 
     return {"status": "ok"}

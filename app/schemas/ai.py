@@ -1,4 +1,4 @@
-"""AI parsing schemas for simple cashflow entry model."""
+"""Oddiy pul oqimi amaliyotlari modeli uchun AI parsing sxemalari."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class AIParseRequest(BaseModel):
-    """Raw operator text to parse into structured entry intent."""
+    """Tizim tushunadigan shaklga o'girish uchun operatordan olingan xom (raw) matn."""
 
     text: str = Field(min_length=2, max_length=500)
 
 
 class AIParsedEntry(BaseModel):
-    """Validated AI parse output for entry creation."""
+    """Yozuv (entry) yaratish uchun validatsiyadan o'tgan AI parsing natijasi."""
 
     amount: Decimal
     currency_code: str
