@@ -52,32 +52,39 @@ class EntryService:
         )
         return result.scalar_one_or_none()
 
-    async def soft_delete_entry(self, session: AsyncSession, entry_id: int) -> Optional[CashEntry]:
-        """Soft delete an entry by setting deleted_at. Returns the entry or None if not found."""
+    async def soft_delete_entry(self, session: AsyncSession, entry_id: int, user_id: int) -> Optional[CashEntry]:
+        """Soft delete an entry by setting deleted_at. Returns the entry or None if not found.
+        Uses pessimistic locking to prevent concurrency issues."""
 
         async with session.begin():
-            entry = await self.get_entry_by_id(session, entry_id)
+            result = await session.execute(
+                select(CashEntry).where(CashEntry.id == entry_id, _not_deleted).with_for_update()
+            )
+            entry = result.scalar_one_or_none()
             if entry is None:
                 return None
             entry.deleted_at = datetime.utcnow()
+            entry.updated_by_telegram_id = user_id
             await session.flush()
             await session.refresh(entry)
             return entry
 
-    async def restore_entry(self, session: AsyncSession, entry_id: int) -> Optional[CashEntry]:
-        """Restore a soft-deleted entry by clearing deleted_at."""
+    async def restore_entry(self, session: AsyncSession, entry_id: int, user_id: int) -> Optional[CashEntry]:
+        """Restore a soft-deleted entry by clearing deleted_at.
+        Uses pessimistic locking."""
 
         async with session.begin():
             result = await session.execute(
                 select(CashEntry).where(
                     CashEntry.id == entry_id,
                     CashEntry.deleted_at.is_not(None),
-                )
+                ).with_for_update()
             )
             entry = result.scalar_one_or_none()
             if entry is None:
                 return None
             entry.deleted_at = None
+            entry.updated_by_telegram_id = user_id
             await session.flush()
             await session.refresh(entry)
             return entry

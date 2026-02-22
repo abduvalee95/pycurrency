@@ -209,11 +209,12 @@ async def _handle_delete_entry(message: Message, state: FSMContext, data: dict) 
 @router.callback_query(F.data == "aichat_create_yes")
 async def confirm_ai_create(callback, state: FSMContext):
     """Create entry after AI chat confirmation."""
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     data = await state.get_data()
     parsed = data.get("ai_create")
     if not parsed:
-        await callback.message.answer("❌ Ma'lumot topilmadi.")
+        await callback.message.answer("❌ Ma'lumot topilmadi yoku allaqachon bajarilgan.")
         await callback.answer()
         return
 
@@ -246,6 +247,7 @@ async def confirm_ai_create(callback, state: FSMContext):
 @router.callback_query(F.data == "aichat_create_no")
 async def cancel_ai_create(callback, state: FSMContext):
     """Cancel AI chat entry creation."""
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     await state.update_data(ai_create=None)
     await callback.message.answer("Entry yaratish bekor qilindi.")
@@ -255,17 +257,18 @@ async def cancel_ai_create(callback, state: FSMContext):
 @router.callback_query(F.data == "aichat_delete_yes")
 async def confirm_ai_delete(callback, state: FSMContext):
     """Execute soft delete after AI chat confirmation."""
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     data = await state.get_data()
     entry_id = data.get("ai_delete_id")
     if not entry_id:
-        await callback.message.answer("❌ Ma'lumot topilmadi.")
+        await callback.message.answer("❌ Ma'lumot topilmadi yoku allaqachon bajarilgan.")
         await callback.answer()
         return
 
     service = EntryService()
     async with db_manager.session_factory() as session:
-        entry = await service.soft_delete_entry(session, entry_id)
+        entry = await service.soft_delete_entry(session, entry_id, user_id=callback.from_user.id)
 
     if entry:
         await callback.message.answer(
@@ -282,6 +285,7 @@ async def confirm_ai_delete(callback, state: FSMContext):
 @router.callback_query(F.data == "aichat_delete_no")
 async def cancel_ai_delete(callback, state: FSMContext):
     """Cancel AI chat delete."""
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     await state.update_data(ai_delete_id=None)
     await callback.message.answer("O'chirish bekor qilindi.")

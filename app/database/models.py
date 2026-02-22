@@ -111,6 +111,7 @@ class CashEntry(Base):
     client_name: Mapped[str] = mapped_column(String(128), index=True)
     note: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     created_by_telegram_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    updated_by_telegram_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None, index=True)
 

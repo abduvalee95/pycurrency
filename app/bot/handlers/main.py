@@ -211,6 +211,7 @@ async def manual_cancel(callback, state: FSMContext):
 
     if not await _ensure_allowed_callback(callback):
         return
+    await callback.message.edit_reply_markup(reply_markup=None)
     await state.clear()
     await callback.message.answer("Entry cancelled.", reply_markup=main_menu_keyboard())
     await callback.answer()
@@ -222,6 +223,7 @@ async def manual_confirm(callback, state: FSMContext):
 
     if not await _ensure_allowed_callback(callback):
         return
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     data = await state.get_data()
     try:
@@ -391,6 +393,7 @@ async def show_reports(message: Message) -> None:
 
     async with db_manager.session_factory() as session:
         balances = await service.currency_balances(session)
+        daily_profits = await service.daily_profit_by_currency(session, today)
         debts = await service.client_debts(session)
         _, kgs_total = await service.cash_total(session)
         entries = await service.entries_for_day(session, today)
@@ -400,6 +403,15 @@ async def show_reports(message: Message) -> None:
     lines.append("💰 Balans (valyuta bo'yicha):")
     for currency, amount in sorted(balances.items()):
         lines.append(f"  {currency}: {_fmt(amount, currency)}")
+
+    lines.append("")
+    lines.append("📈 Bugungi sof foyda (Kirim - Chiqim):")
+    if daily_profits:
+        for currency, amount in sorted(daily_profits.items()):
+            sign = "+" if amount >= 0 else ""
+            lines.append(f"  {currency}: {sign}{_fmt(amount, currency)}")
+    else:
+        lines.append("  Bugun operatsiyalar yo'q.")
 
     lines.append("")
     lines.append(f"Bugungi operatsiyalar soni: {len(entries)}")
@@ -501,12 +513,13 @@ async def confirm_delete(callback, state: FSMContext):
 
     if not await _ensure_allowed_callback(callback):
         return
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     entry_id = int(callback.data.split("_")[-1])
     service = EntryService()
 
     async with db_manager.session_factory() as session:
-        entry = await service.soft_delete_entry(session, entry_id)
+        entry = await service.soft_delete_entry(session, entry_id, user_id=callback.from_user.id)
 
     if entry:
         await callback.message.answer(
@@ -526,6 +539,8 @@ async def cancel_delete(callback, state: FSMContext):
 
     if not await _ensure_allowed_callback(callback):
         return
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer("O'chirish bekor qilindi.", reply_markup=main_menu_keyboard())
     await callback.answer()
 
@@ -546,7 +561,7 @@ async def restore_entry_command(message: Message) -> None:
     service = EntryService()
 
     async with db_manager.session_factory() as session:
-        entry = await service.restore_entry(session, entry_id)
+        entry = await service.restore_entry(session, entry_id, user_id=message.from_user.id)
 
     if entry:
         await message.answer(
@@ -728,7 +743,7 @@ async def edit_entry_command(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
 
     async with db_manager.session_factory() as session:
-        await service.soft_delete_entry(session, entry_id)
+        await service.soft_delete_entry(session, entry_id, user_id=user_id)
         new_entry = await service.create_entry(session, updated_payload, user_id)
 
     sign = "📥 +" if new_entry.flow_direction == "INFLOW" else "📤 -"

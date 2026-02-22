@@ -20,6 +20,11 @@ class EntryCreate(BaseModel):
     client_name: str = Field(min_length=1, max_length=128)
     note: Optional[str] = Field(default=None, max_length=512)
 
+    @field_validator("client_name")
+    @classmethod
+    def normalize_client_name(cls, value: str) -> str:
+        return value.strip().title()
+
     @field_validator("currency_code")
     @classmethod
     def normalize_currency(cls, value: str) -> str:
@@ -35,14 +40,6 @@ class EntryCreate(BaseModel):
         normalized = value.upper().strip()
         if normalized not in {"INFLOW", "OUTFLOW"}:
             raise ValueError("flow_direction must be INFLOW or OUTFLOW")
-        return normalized
-
-    @field_validator("client_name")
-    @classmethod
-    def normalize_client_name(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("client_name is required")
         return normalized
 
 
