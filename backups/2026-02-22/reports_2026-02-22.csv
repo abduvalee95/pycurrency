@@ -1,0 +1,6 @@
+section,key,value,extra
+currency_balance,USD,1100.00000000,
+client_debt,Bek,-100.00000000,USD
+client_debt,SmokeTest,-1000.00000000,USD
+cash_total,USD,1100.00000000,
+cash_total,UZS_TOTAL,0,

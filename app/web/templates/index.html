@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cashflow Mini App</title>
+  <style>
+    :root {
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --muted: #475569;
+      --text: #0f172a;
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --success: #059669;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
+
+    function App() {
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+      const initData = tg ? tg.initData : "";
+      const fallbackTelegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+      const [provider, setProvider] = useState("loading...");
+      const [amount, setAmount] = useState("");
+      const [currencyCode, setCurrencyCode] = useState("USD");
+      const [flowDirection, setFlowDirection] = useState("INFLOW");
+      const [clientName, setClientName] = useState("");
+      const [note, setNote] = useState("");
+      const [status, setStatus] = useState("");
+      const [warning, setWarning] = useState("");
+      const [aiOpen, setAiOpen] = useState(false);
+      const [aiInput, setAiInput] = useState("");
+      const [aiStatus, setAiStatus] = useState("");
+      const [dailyProfit, setDailyProfit] = useState({});
+      const [balances, setBalances] = useState({});
+      const [cashTotal, setCashTotal] = useState(null);
+      const [debts, setDebts] = useState([]);
+
+      const nowText = useMemo(() => new Date().toLocaleString(), [status, aiStatus]);
+
+      function authHeaders(extra) {
+        const headers = { ...(extra || {}) };
+        if (initData) {
+          headers["X-Telegram-Init-Data"] = initData;
+        } else if (fallbackTelegramId) {
+          headers["X-Telegram-Id"] = String(fallbackTelegramId);
+        }
+        return headers;
+      }
+
+      useEffect(() => {
+        if (tg) {
+          tg.ready();
+          tg.expand();
+        }
+        fetch("/health")
+          .then((res) => setProvider(res.ok ? "connected" : "unknown"))
+          .catch(() => setProvider("offline"));
+        loadReports();
+      }, []);
+
+      async function loadReports() {
+        try {
+          const [p1, p2, p3] = await Promise.all([
+            fetch("/api/v1/reports/daily-profit", { headers: authHeaders() }),
+            fetch("/api/v1/reports/currency-balances", { headers: authHeaders() }),
+            fetch("/api/v1/reports/cash-total", { headers: authHeaders() }),
+          ]);
+          const p4 = await fetch("/api/v1/reports/client-debts", { headers: authHeaders() });
+          if (!p1.ok || !p2.ok || !p3.ok || !p4.ok) {
+            throw new Error("Report fetch failed");
+          }
+          const d1 = await p1.json();
+          const d2 = await p2.json();
+          const d3 = await p3.json();
+          const d4 = await p4.json();
+          setDailyProfit(d1.by_currency || {});
+          setBalances(d2.by_currency || {});
+          setCashTotal(d3.uzs_total || 0);
+          setDebts(d4.items || []);
+        } catch (err) {
+          setWarning("Reportlarni yuklashda xatolik: " + err.message);
+        }
+      }
+
+      async function parseWithAI() {
+        if (!aiInput.trim()) {
+          return;
+        }
+        setAiStatus("Parsing...");
+        try {
+          const res = await fetch("/api/v1/ai/parse", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ text: aiInput.trim() }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || "AI parse failed");
+          }
+          setAmount(String(data.amount || ""));
+          setCurrencyCode(data.currency_code || "USD");
+          setFlowDirection(data.flow_direction || "INFLOW");
+          setClientName(data.client_name || "");
+          setNote(data.note || "");
+          setAiStatus("AI fieldlarni to'ldirdi.");
+          setAiOpen(false);
+        } catch (err) {
+          setAiStatus("Xatolik: " + err.message);
+        }
+      }
+
+      async function saveEntry() {
+        setWarning("");
+        if (!amount || Number(amount) <= 0) {
+          setWarning("Amount musbat bo'lishi kerak");
+          return;
+        }
+        if (!clientName.trim()) {
+          setWarning("Client name majburiy");
+          return;
+        }
+
+        setStatus("Saving...");
+        try {
+          const res = await fetch("/api/v1/entries", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+              amount,
+              currency_code: currencyCode,
+              flow_direction: flowDirection,
+              client_name: clientName.trim(),
+              note: note.trim() || null,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || "Save failed");
+          }
+          setStatus(`Saved entry #${data.id}`);
+          setAmount("");
+          setNote("");
+          loadReports();
+        } catch (err) {
+          setStatus("");
+          setWarning("Saqlashda xatolik: " + err.message);
+        }
+      }
+
+      async function exportToday() {
+        setStatus("Exporting CSV...");
+        try {
+          const res = await fetch("/api/v1/reports/export-daily-csv", {
+            method: "POST",
+            headers: authHeaders(),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || "Export failed");
+          }
+          setStatus(`CSV tayyor: ${data.entries_csv_path}`);
+        } catch (err) {
+          setStatus("");
+          setWarning("Export xatolik: " + err.message);
+        }
+      }
+
+      const card = {
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 14,
+        padding: 14,
+        boxShadow: "0 8px 20px rgba(15,23,42,0.06)",
+      };
+
+      return (
+        <div style={{ maxWidth: 920, margin: "0 auto", padding: "14px 14px 120px" }}>
+          <div style={{ ...card, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>Cashflow Mini App</div>
+                <div style={{ color: "var(--muted)", fontSize: 13 }}>Telegram provider: {provider}</div>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Time: {nowText}</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 10, marginBottom: 12 }}>
+            <button style={actionBtn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>➕ New Entry</button>
+            <button style={actionBtn} onClick={loadReports}>📊 Refresh</button>
+            <button style={actionBtn} onClick={() => setAiOpen((v) => !v)}>🤖 AI Assistant</button>
+            <button style={actionBtn} onClick={exportToday}>📤 Export CSV</button>
+          </div>
+
+          <div style={card}>
+            <div style={sectionTitle}>💰 Amount</div>
+            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000" inputMode="decimal" style={input} />
+
+            <div style={sectionTitle}>🔄 Currency</div>
+            <select value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} style={input}>
+              <option value="USD">USD</option>
+              <option value="RUB">RUB</option>
+              <option value="UZS">UZS</option>
+            </select>
+
+            <div style={sectionTitle}>📥 / 📤 Direction</div>
+            <select value={flowDirection} onChange={(e) => setFlowDirection(e.target.value)} style={input}>
+              <option value="INFLOW">📥 Inflow</option>
+              <option value="OUTFLOW">📤 Outflow</option>
+            </select>
+
+            <div style={sectionTitle}>👤 Client name</div>
+            <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Ali" style={input} />
+
+            <div style={sectionTitle}>💬 Note (optional)</div>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="rate: 12100" style={input} />
+          </div>
+
+          <div style={{ ...card, marginTop: 12 }}>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>✅ Hisobot</div>
+            <div style={{ marginBottom: 6 }}>
+              <strong>Kunlik foyda:</strong> {Object.keys(dailyProfit).length === 0 ? " - " : ""}
+              {Object.entries(dailyProfit).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}>{k}: {v}</span>)}
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong>Valyuta bo'yicha balans:</strong> {Object.keys(balances).length === 0 ? " - " : ""}
+              {Object.entries(balances).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}>{k}: {v}</span>)}
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong>Client bo'yicha qarz:</strong> {debts.length === 0 ? " - " : ""}
+              {debts.slice(0, 8).map((row, idx) => (
+                <span key={idx} style={{ marginRight: 10 }}>
+                  {row.client_name} [{row.currency_code}]: {row.debt_amount}
+                </span>
+              ))}
+            </div>
+            <div><strong>Jami kassadagi pul (UZS):</strong> {cashTotal === null ? " - " : cashTotal}</div>
+          </div>
+
+          {warning ? <div style={{ marginTop: 10, color: "var(--danger)", fontWeight: 700 }}>{warning}</div> : null}
+          {status ? <div style={{ marginTop: 10, color: "var(--success)", fontWeight: 700 }}>{status}</div> : null}
+
+          <div style={{ position: "sticky", bottom: 10, marginTop: 14 }}>
+            <button onClick={saveEntry} style={saveBtn}>Save Entry</button>
+          </div>
+
+          <div style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            maxWidth: 920,
+            margin: "0 auto",
+            transform: aiOpen ? "translateY(0)" : "translateY(100%)",
+            transition: "transform 0.25s ease",
+          }}>
+            <div style={{ ...card, margin: "0 10px 10px", borderRadius: "14px 14px 8px 8px" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                <button style={chipBtn} onClick={() => setFlowDirection("INFLOW")}>Set Inflow</button>
+                <button style={chipBtn} onClick={() => setFlowDirection("OUTFLOW")}>Set Outflow</button>
+                <button style={chipBtn} onClick={() => setCurrencyCode("UZS")}>Set UZS</button>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={aiInput} onChange={(e) => setAiInput(e.target.value)} placeholder="1000 usd oldim" style={input} />
+                <button onClick={parseWithAI} style={chipPrimary}>Parse</button>
+              </div>
+              <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13 }}>{aiStatus}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const sectionTitle = { marginTop: 10, marginBottom: 6, fontWeight: 700 };
+    const input = { width: "100%", border: "1px solid var(--border)", borderRadius: 10, padding: 10, fontSize: 15 };
+    const actionBtn = { border: "1px solid var(--border)", borderRadius: 12, background: "#fff", padding: 12, fontWeight: 700, cursor: "pointer" };
+    const chipBtn = { border: "1px solid var(--border)", borderRadius: 999, background: "#fff", padding: "6px 10px", fontWeight: 700, cursor: "pointer" };
+    const chipPrimary = { border: "none", borderRadius: 10, background: "var(--primary)", color: "#fff", padding: "10px 14px", fontWeight: 700, cursor: "pointer" };
+    const saveBtn = { width: "100%", border: "none", borderRadius: 14, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#fff", padding: 14, fontWeight: 800, fontSize: 16, cursor: "pointer" };
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
