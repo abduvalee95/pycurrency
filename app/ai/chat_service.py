@@ -16,52 +16,43 @@ class AIChatService:
     Supports actions: create_entry, delete_entry, and plain text answers.
     """
 
-    def __init__(self, client: AsyncOpenAI, model: str) -> None:
+    def __init__(self, client: AsyncOpenAI, model: str, fallbacks: list | None = None) -> None:
         self._client = client
         self._model = model
+        self._fallbacks: list[tuple[AsyncOpenAI, str]] = fallbacks or []
 
     @classmethod
     def from_settings(cls, settings: Settings) -> Optional["AIChatService"]:
-        """Build chat service from settings. Returns None if no provider configured."""
+        """Build chat service from settings with automatic fallback chain."""
 
-        if settings.ai_provider == "groq":
-            if settings.groq_api_key:
-                client = AsyncOpenAI(
-                    api_key=settings.groq_api_key,
-                    base_url="https://api.groq.com/openai/v1",
-                )
-                return cls(client=client, model=settings.groq_model)
+        def _client_for(provider: str) -> tuple[AsyncOpenAI, str] | None:
+            if provider == "groq" and settings.groq_api_key:
+                return AsyncOpenAI(api_key=settings.groq_api_key, base_url="https://api.groq.com/openai/v1"), settings.groq_model
+            if provider == "openai" and settings.openai_api_key:
+                return AsyncOpenAI(api_key=settings.openai_api_key), settings.openai_model
+            if provider == "openrouter" and settings.openrouter_api_key:
+                return AsyncOpenAI(api_key=settings.openrouter_api_key, base_url=settings.openrouter_base_url), settings.openrouter_model
+            if provider == "deepseek" and settings.deepseek_api_key:
+                return AsyncOpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url), settings.deepseek_model
+            if provider == "google" and settings.google_api_key:
+                return AsyncOpenAI(api_key=settings.google_api_key, base_url=settings.google_base_url), settings.google_model
+            return None
 
-        if settings.ai_provider == "openai":
-            if settings.openai_api_key:
-                client = AsyncOpenAI(api_key=settings.openai_api_key)
-                return cls(client=client, model=settings.openai_model)
+        primary_pair = _client_for(settings.ai_provider)
+        if primary_pair is None:
+            return None
 
-        if settings.ai_provider == "deepseek":
-            if settings.deepseek_api_key:
-                client = AsyncOpenAI(
-                    api_key=settings.deepseek_api_key,
-                    base_url=settings.deepseek_base_url,
-                )
-                return cls(client=client, model=settings.deepseek_model)
+        # Build fallback chain from other configured providers
+        all_providers = ["groq", "openrouter", "openai", "deepseek", "google"]
+        fallbacks = []
+        for p in all_providers:
+            if p != settings.ai_provider:
+                pair = _client_for(p)
+                if pair:
+                    fallbacks.append(pair)
 
-        if settings.ai_provider == "openrouter":
-            if settings.openrouter_api_key:
-                client = AsyncOpenAI(
-                    api_key=settings.openrouter_api_key,
-                    base_url=settings.openrouter_base_url,
-                )
-                return cls(client=client, model=settings.openrouter_model)
-
-        if settings.ai_provider == "google":
-            if settings.google_api_key:
-                client = AsyncOpenAI(
-                    api_key=settings.google_api_key,
-                    base_url=settings.google_base_url,
-                )
-                return cls(client=client, model=settings.google_model)
-
-        return None
+        client, model = primary_pair
+        return cls(client=client, model=model, fallbacks=fallbacks)
 
     async def answer(self, *, question: str, context: str) -> dict:
         """Answer operator question. Returns dict with 'action' and 'data' keys.
@@ -129,17 +120,34 @@ class AIChatService:
             f"=== KASSA MA'LUMOTLARI (CONTEXT) ===\n{context}\n=========================\n"
         )
 
-        response = await self._client.chat.completions.create(
-            model=self._model,
-            temperature=0.1,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question},
-            ],
-        )
+        msgs = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": question},
+        ]
 
-        raw = (response.choices[0].message.content or "").strip()
-        return self._parse_response(raw)
+        clients_to_try = [(self._client, self._model)] + self._fallbacks
+
+        last_error = None
+        for client, model in clients_to_try:
+            try:
+                response = await client.chat.completions.create(
+                    model=model,
+                    temperature=0.1,
+                    messages=msgs,
+                )
+                raw = (response.choices[0].message.content or "").strip()
+                return self._parse_response(raw)
+
+            except Exception as exc:
+                err_str = str(exc)
+                # Only retry on rate limit errors
+                if "429" in err_str or "rate limit" in err_str.lower() or "quota" in err_str.lower():
+                    last_error = exc
+                    continue
+                raise
+
+        # All providers exhausted
+        raise RuntimeError(f"All AI providers failed. Last error: {last_error}")
 
     @staticmethod
     def _parse_response(raw: str) -> dict:

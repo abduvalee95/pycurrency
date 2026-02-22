@@ -558,3 +558,184 @@ async def restore_entry_command(message: Message) -> None:
     else:
         await message.answer(f"❌ Entry #{entry_id} topilmadi yoki allaqachon faol.", reply_markup=main_menu_keyboard())
 
+
+@router.message(Command("q"))
+async def quick_entry_command(message: Message) -> None:
+    """Quick entry without AI or wizard: /q <amount> <currency> <in|out> <client> [note...]
+
+    Examples:
+      /q 1000 usd in Ali
+      /q 500 rub out Karim qarz
+      /q 20000 kgs in Manas oylik to'lov
+    """
+
+    if not await _ensure_allowed_message(message):
+        return
+
+    raw = (message.text or "").strip()
+    parts = raw.split(None, 5)  # /q amount currency dir client [note]
+
+    usage = (
+        "❌ Format: /q <miqdor> <valyuta> <in|out> <client> [izoh]\n"
+        "Misol: /q 1000 usd in Ali\n"
+        "       /q 500 rub out Karim qarz uchun"
+    )
+
+    if len(parts) < 5:
+        await message.answer(usage)
+        return
+
+    _, amount_str, currency_raw, direction_raw, client_name = parts[0], parts[1], parts[2], parts[3], parts[4]
+    note = parts[5] if len(parts) > 5 else None
+    direction_raw = direction_raw.lower()
+
+    # Parse direction
+    if direction_raw in {"in", "kirim", "+", "i"}:
+        direction = "INFLOW"
+    elif direction_raw in {"out", "chiqim", "-", "o"}:
+        direction = "OUTFLOW"
+    else:
+        await message.answer(f"❌ Yo'nalish noto'g'ri: '{direction_raw}'\nUse: in yoki out")
+        return
+
+    # Parse amount
+    try:
+        amount = Decimal(amount_str.replace(",", ".").replace(" ", ""))
+        if amount <= 0:
+            raise ValueError
+    except (Exception,):
+        await message.answer(f"❌ Miqdor noto'g'ri: '{amount_str}'")
+        return
+
+    # Parse currency
+    currency = currency_raw.upper().strip()
+    if currency not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
+        await message.answer(f"❌ Valyuta noto'g'ri: '{currency}'\nRuxsat etilgan: USD, RUB, UZS, KGS, EUR")
+        return
+
+    try:
+        payload = EntryCreate(
+            amount=amount,
+            currency_code=currency,
+            flow_direction=direction,
+            client_name=client_name,
+            note=note,
+        )
+    except Exception as exc:
+        await message.answer(f"❌ Xato: {exc}")
+        return
+
+    user_id = message.from_user.id if message.from_user else 0
+    service = EntryService()
+
+    async with db_manager.session_factory() as session:
+        entry = await service.create_entry(session, payload, user_id)
+
+    sign = "📥 +" if direction == "INFLOW" else "📤 -"
+    note_str = f"\nIzoh: {note}" if note else ""
+    await message.answer(
+        f"✅ #{entry.id} saqlandi!\n"
+        f"{sign} {_fmt(entry.amount, entry.currency_code)} | {entry.client_name}{note_str}",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+@router.message(Command("edit"))
+async def edit_entry_command(message: Message) -> None:
+    """Edit a specific field of an existing entry: /edit <id> <field> <value>
+
+    Fields: amount, currency, direction (in/out), client, note
+    Examples:
+      /edit 5 amount 1500
+      /edit 5 currency EUR
+      /edit 5 client Nodir
+      /edit 5 direction out
+      /edit 5 note qarz uchun
+    """
+
+    if not await _ensure_allowed_message(message):
+        return
+
+    parts = (message.text or "").strip().split(None, 3)
+    usage = (
+        "❌ Format: /edit <id> <field> <yangi_qiymat>\n"
+        "Fields: amount, currency, direction, client, note\n"
+        "Misol: /edit 5 amount 1500\n"
+        "       /edit 5 client Nodir"
+    )
+
+    if len(parts) < 4:
+        await message.answer(usage)
+        return
+
+    _, entry_id_str, field, new_value = parts
+
+    if not entry_id_str.isdigit():
+        await message.answer("❌ Entry ID raqam bo'lishi kerak.")
+        return
+
+    entry_id = int(entry_id_str)
+    field = field.lower().strip()
+
+    allowed_fields = {"amount", "currency", "direction", "client", "note"}
+    if field not in allowed_fields:
+        await message.answer(f"❌ Noto'g'ri field: '{field}'\nRuxsat: {', '.join(sorted(allowed_fields))}")
+        return
+
+    service = EntryService()
+
+    async with db_manager.session_factory() as session:
+        entry = await service.get_entry_by_id(session, entry_id)
+
+    if entry is None:
+        await message.answer(f"❌ Entry #{entry_id} topilmadi.")
+        return
+
+    # Build updated payload
+    try:
+        new_amount = Decimal(str(entry.amount))
+        new_currency = entry.currency_code
+        new_direction = entry.flow_direction
+        new_client = entry.client_name
+        new_note = entry.note
+
+        if field == "amount":
+            new_amount = Decimal(new_value.replace(",", "."))
+        elif field == "currency":
+            new_currency = new_value.upper().strip()
+        elif field == "direction":
+            mapping = {"in": "INFLOW", "kirim": "INFLOW", "+": "INFLOW",
+                       "out": "OUTFLOW", "chiqim": "OUTFLOW", "-": "OUTFLOW"}
+            new_direction = mapping.get(new_value.lower(), new_value.upper())
+        elif field == "client":
+            new_client = new_value.strip()
+        elif field == "note":
+            new_note = new_value.strip() or None
+
+        updated_payload = EntryCreate(
+            amount=new_amount,
+            currency_code=new_currency,
+            flow_direction=new_direction,
+            client_name=new_client,
+            note=new_note,
+        )
+    except Exception as exc:
+        await message.answer(f"❌ Yangi qiymat noto'g'ri: {exc}")
+        return
+
+    # Soft delete old, create new
+    user_id = message.from_user.id if message.from_user else 0
+
+    async with db_manager.session_factory() as session:
+        await service.soft_delete_entry(session, entry_id)
+        new_entry = await service.create_entry(session, updated_payload, user_id)
+
+    sign = "📥 +" if new_entry.flow_direction == "INFLOW" else "📤 -"
+    await message.answer(
+        f"✅ Entry #{entry_id} yangilandi → #{new_entry.id}\n"
+        f"{sign} {_fmt(new_entry.amount, new_entry.currency_code)} | {new_entry.client_name}\n"
+        f"(Eski #{entry_id} arxivlandi)",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
