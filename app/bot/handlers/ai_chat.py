@@ -116,12 +116,15 @@ async def _handle_create_entry(message: Message, state: FSMContext, data: dict) 
 
     try:
         amount = Decimal(str(data.get("amount", 0)))
-        currency_code = str(data.get("currency_code", "")).upper()
+        raw_currency = str(data.get("currency_code", ""))
         flow_direction = str(data.get("flow_direction", "")).upper()
         client_name = str(data.get("client_name", "")).strip()
         note = str(data.get("note", "")).strip() or None
 
-        if amount <= 0 or currency_code not in {"USD", "RUB", "UZS", "KGS", "EUR"} or flow_direction not in {"INFLOW", "OUTFLOW"}:
+        from app.utils.currency import normalize_currency
+        currency_code = normalize_currency(raw_currency)
+
+        if amount <= 0 or currency_code is None or flow_direction not in {"INFLOW", "OUTFLOW"}:
             await message.answer("❌ AI noto'g'ri ma'lumot qaytardi. Qayta urinib ko'ring.")
             return
 

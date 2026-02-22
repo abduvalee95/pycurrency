@@ -23,10 +23,11 @@ class EntryCreate(BaseModel):
     @field_validator("currency_code")
     @classmethod
     def normalize_currency(cls, value: str) -> str:
-        normalized = value.upper().strip()
-        if normalized not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
+        from app.utils.currency import normalize_currency as _norm
+        result = _norm(value)
+        if result is None:
             raise ValueError("currency_code must be USD, RUB, UZS, KGS, or EUR")
-        return normalized
+        return result
 
     @field_validator("flow_direction")
     @classmethod

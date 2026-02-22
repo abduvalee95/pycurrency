@@ -608,9 +608,10 @@ async def quick_entry_command(message: Message) -> None:
         return
 
     # Parse currency
-    currency = currency_raw.upper().strip()
-    if currency not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
-        await message.answer(f"❌ Valyuta noto'g'ri: '{currency}'\nRuxsat etilgan: USD, RUB, UZS, KGS, EUR")
+    from app.utils.currency import normalize_currency
+    currency = normalize_currency(currency_raw)
+    if currency is None:
+        await message.answer(f"❌ Valyuta noto'g'ri: '{currency_raw}'\nRuxsat etilgan: USD, RUB, UZS, KGS, EUR")
         return
 
     try:
