@@ -14,7 +14,7 @@ from app.schemas.common import ORMBaseSchema
 class EntryCreate(BaseModel):
     """Payload for creating a cash entry."""
 
-    amount: Decimal = Field(gt=0)
+    amount: Decimal = Field(gt=0, lt=Decimal("10000001"))  # max 10M per transaction
     currency_code: str = Field(min_length=3, max_length=3)
     flow_direction: str = Field(min_length=6, max_length=8)
     client_name: str = Field(min_length=1, max_length=128)

@@ -154,10 +154,19 @@ class AIChatService:
 
         try:
             result = json.loads(cleaned)
-            if isinstance(result, dict) and "action" in result:
+            if isinstance(result, dict):
+                action = result.get("action")
+                data = result.get("data")
+                # Guard: action must be a valid non-null string
+                if action not in {"text", "create_entry", "delete_entry"}:
+                    return {"action": "text", "data": {"message": raw}}
+                # Guard: data must be a dict (not None, not list)
+                if not isinstance(data, dict):
+                    return {"action": "text", "data": {"message": raw}}
                 return result
         except json.JSONDecodeError:
             pass
 
         # Fallback: treat entire response as text
         return {"action": "text", "data": {"message": raw}}
+
