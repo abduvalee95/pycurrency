@@ -20,7 +20,7 @@ envVarGroups:
   - name: common-config
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.6"
       - key: APP_NAME
         value: Exchange Accounting MVP
       - key: DEBUG
