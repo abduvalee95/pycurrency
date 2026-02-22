@@ -3,6 +3,7 @@
 NEW_ENTRY = "➕ New Entry"
 REPORTS = "📊 Reports"
 AI_ASSISTANT_INPUT = "🤖 AI Assistant"
+AI_CHAT = "💬 AI Chat"
 EXPORT_CSV = "📤 Export CSV"
 CANCEL_OPERATION = "❌ Cancel"
 

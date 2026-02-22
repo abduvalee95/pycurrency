@@ -417,7 +417,7 @@ async def show_reports(message: Message) -> None:
 
 @router.message(F.text == texts.EXPORT_CSV)
 async def export_csv(message: Message) -> None:
-    """Run daily CSV export and send files to admin chat."""
+    """Run daily CSV export and send files to Telegram chat."""
 
     if not await _ensure_allowed_message(message):
         return
@@ -428,9 +428,16 @@ async def export_csv(message: Message) -> None:
 
     try:
         result = await scheduler.run_once(today)
-        await message.answer(
-            f"CSV export tayyor:\n- {result.entries_csv}\n- {result.reports_csv}",
-            reply_markup=main_menu_keyboard(),
-        )
+
+        # Send CSV files directly to the user's chat
+        from aiogram.types import FSInputFile
+
+        entries_file = FSInputFile(str(result.entries_csv), filename=result.entries_csv.name)
+        reports_file = FSInputFile(str(result.reports_csv), filename=result.reports_csv.name)
+
+        await message.answer_document(entries_file, caption=f"📋 Entries: {today.isoformat()}")
+        await message.answer_document(reports_file, caption=f"📊 Reports: {today.isoformat()}")
+        await message.answer("✅ CSV fayllar yuborildi!", reply_markup=main_menu_keyboard())
+
     except Exception as exc:  # noqa: BLE001
         await message.answer(f"Export xatolik: {exc}", reply_markup=main_menu_keyboard())
