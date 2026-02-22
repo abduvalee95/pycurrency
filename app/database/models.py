@@ -112,6 +112,7 @@ class CashEntry(Base):
     note: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     created_by_telegram_id: Mapped[int] = mapped_column(BigInteger, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None, index=True)
 
 
 @event.listens_for(LedgerEntry, "before_update", propagate=True)

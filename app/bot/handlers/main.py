@@ -441,3 +441,109 @@ async def export_csv(message: Message) -> None:
 
     except Exception as exc:  # noqa: BLE001
         await message.answer(f"Export xatolik: {exc}", reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("delete"))
+async def delete_entry_command(message: Message) -> None:
+    """Soft delete an entry by ID with confirmation: /delete <id>."""
+
+    if not await _ensure_allowed_message(message):
+        return
+
+    parts = (message.text or "").strip().split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        await message.answer("❌ Foydalanish: /delete <entry_id>\nMasalan: /delete 5")
+        return
+
+    entry_id = int(parts[1])
+    service = EntryService()
+
+    async with db_manager.session_factory() as session:
+        entry = await service.get_entry_by_id(session, entry_id)
+
+    if entry is None:
+        await message.answer(f"❌ Entry #{entry_id} topilmadi yoki allaqachon o'chirilgan.")
+        return
+
+    direction = "📥 KIRIM" if entry.flow_direction == "INFLOW" else "📤 CHIQIM"
+    summary = (
+        f"🗑 O'chirmoqchimisiz?\n\n"
+        f"#{entry.id} | {direction}\n"
+        f"Amount: {_fmt(entry.amount, entry.currency_code)}\n"
+        f"Client: {entry.client_name}\n"
+        f"Note: {entry.note or '-'}\n"
+        f"Sana: {entry.created_at.strftime('%d.%m.%Y %H:%M')}"
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Ha, o'chir", callback_data=f"del_yes_{entry_id}")],
+            [InlineKeyboardButton(text="❌ Yo'q, bekor qil", callback_data="del_no")],
+        ]
+    )
+    await message.answer(summary, reply_markup=keyboard)
+
+
+@router.callback_query(F.data.startswith("del_yes_"))
+async def confirm_delete(callback, state: FSMContext):
+    """Execute soft delete after user confirmation."""
+
+    if not await _ensure_allowed_callback(callback):
+        return
+
+    entry_id = int(callback.data.split("_")[-1])
+    service = EntryService()
+
+    async with db_manager.session_factory() as session:
+        entry = await service.soft_delete_entry(session, entry_id)
+
+    if entry:
+        await callback.message.answer(
+            f"✅ Entry #{entry_id} o'chirildi (soft delete).\n"
+            f"Qayta tiklash uchun: /restore {entry_id}",
+            reply_markup=main_menu_keyboard(),
+        )
+    else:
+        await callback.message.answer(f"❌ Entry #{entry_id} topilmadi.", reply_markup=main_menu_keyboard())
+
+    await callback.answer()
+
+
+@router.callback_query(F.data == "del_no")
+async def cancel_delete(callback, state: FSMContext):
+    """Cancel delete operation."""
+
+    if not await _ensure_allowed_callback(callback):
+        return
+    await callback.message.answer("O'chirish bekor qilindi.", reply_markup=main_menu_keyboard())
+    await callback.answer()
+
+
+@router.message(Command("restore"))
+async def restore_entry_command(message: Message) -> None:
+    """Restore a soft-deleted entry: /restore <id>."""
+
+    if not await _ensure_allowed_message(message):
+        return
+
+    parts = (message.text or "").strip().split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        await message.answer("❌ Foydalanish: /restore <entry_id>\nMasalan: /restore 5")
+        return
+
+    entry_id = int(parts[1])
+    service = EntryService()
+
+    async with db_manager.session_factory() as session:
+        entry = await service.restore_entry(session, entry_id)
+
+    if entry:
+        await message.answer(
+            f"✅ Entry #{entry_id} qayta tiklandi!\n"
+            f"Amount: {_fmt(entry.amount, entry.currency_code)}\n"
+            f"Client: {entry.client_name}",
+            reply_markup=main_menu_keyboard(),
+        )
+    else:
+        await message.answer(f"❌ Entry #{entry_id} topilmadi yoki allaqachon faol.", reply_markup=main_menu_keyboard())
+

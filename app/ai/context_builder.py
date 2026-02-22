@@ -28,6 +28,9 @@ class ChatContextBuilder:
 
         lines: list[str] = []
 
+        # Reusable filter to exclude soft-deleted entries
+        _not_deleted = CashEntry.deleted_at.is_(None)
+
         # 1. Balances by currency (INFLOW - OUTFLOW)
         net_case = case(
             (CashEntry.flow_direction == "INFLOW", CashEntry.amount),
@@ -36,7 +39,7 @@ class ChatContextBuilder:
         balance_query = select(
             CashEntry.currency_code,
             func.coalesce(func.sum(net_case), 0),
-        ).group_by(CashEntry.currency_code)
+        ).where(_not_deleted).group_by(CashEntry.currency_code)
 
         result = await session.execute(balance_query)
         balances = {code: amount for code, amount in result.all()}
@@ -57,6 +60,7 @@ class ChatContextBuilder:
             select(func.count(CashEntry.id)).where(
                 CashEntry.created_at >= start_dt,
                 CashEntry.created_at <= end_dt,
+                _not_deleted,
             )
         )
         today_count = count_result.scalar_one()
@@ -68,7 +72,7 @@ class ChatContextBuilder:
                 CashEntry.currency_code,
                 func.coalesce(func.sum(net_case), 0),
             )
-            .where(CashEntry.created_at >= start_dt, CashEntry.created_at <= end_dt)
+            .where(CashEntry.created_at >= start_dt, CashEntry.created_at <= end_dt, _not_deleted)
             .group_by(CashEntry.currency_code)
         )
         today_net = {code: amount for code, amount in today_net_result.all()}
@@ -83,6 +87,7 @@ class ChatContextBuilder:
         # 4. Last 10 entries
         last_entries_result = await session.execute(
             select(CashEntry)
+            .where(_not_deleted)
             .order_by(CashEntry.created_at.desc())
             .limit(10)
         )
@@ -112,6 +117,7 @@ class ChatContextBuilder:
                 CashEntry.currency_code,
                 func.coalesce(func.sum(debt_case), 0),
             )
+            .where(_not_deleted)
             .group_by(CashEntry.client_name, CashEntry.currency_code)
             .order_by(CashEntry.client_name.asc())
         )

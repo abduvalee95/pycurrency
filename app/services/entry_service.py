@@ -7,12 +7,16 @@ from decimal import Decimal
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import CashEntry
 from app.schemas.entry import EntryCreate
+
+
+# Reusable filter to exclude soft-deleted entries
+_not_deleted = CashEntry.deleted_at.is_(None)
 
 
 class EntryService:
@@ -40,6 +44,44 @@ class EntryService:
             await session.refresh(entry)
             return entry
 
+    async def get_entry_by_id(self, session: AsyncSession, entry_id: int) -> Optional[CashEntry]:
+        """Get a single active (non-deleted) entry by ID."""
+
+        result = await session.execute(
+            select(CashEntry).where(CashEntry.id == entry_id, _not_deleted)
+        )
+        return result.scalar_one_or_none()
+
+    async def soft_delete_entry(self, session: AsyncSession, entry_id: int) -> Optional[CashEntry]:
+        """Soft delete an entry by setting deleted_at. Returns the entry or None if not found."""
+
+        async with session.begin():
+            entry = await self.get_entry_by_id(session, entry_id)
+            if entry is None:
+                return None
+            entry.deleted_at = datetime.utcnow()
+            await session.flush()
+            await session.refresh(entry)
+            return entry
+
+    async def restore_entry(self, session: AsyncSession, entry_id: int) -> Optional[CashEntry]:
+        """Restore a soft-deleted entry by clearing deleted_at."""
+
+        async with session.begin():
+            result = await session.execute(
+                select(CashEntry).where(
+                    CashEntry.id == entry_id,
+                    CashEntry.deleted_at.is_not(None),
+                )
+            )
+            entry = result.scalar_one_or_none()
+            if entry is None:
+                return None
+            entry.deleted_at = None
+            await session.flush()
+            await session.refresh(entry)
+            return entry
+
     async def list_entries(
         self,
         session: AsyncSession,
@@ -53,7 +95,7 @@ class EntryService:
     ) -> tuple[int, list[CashEntry]]:
         """Return filtered paginated entries and total."""
 
-        filters = []
+        filters = [_not_deleted]
         if date_from is not None:
             filters.append(CashEntry.created_at >= date_from)
         if date_to is not None:
@@ -63,15 +105,17 @@ class EntryService:
         if currency:
             filters.append(CashEntry.currency_code == currency.upper())
 
-        total_query = select(func.count(CashEntry.id))
-        if filters:
-            total_query = total_query.where(*filters)
+        total_query = select(func.count(CashEntry.id)).where(*filters)
         total_result = await session.execute(total_query)
         total = int(total_result.scalar_one())
 
-        query = select(CashEntry).order_by(CashEntry.created_at.desc(), CashEntry.id.desc()).offset(offset).limit(limit)
-        if filters:
-            query = query.where(*filters)
+        query = (
+            select(CashEntry)
+            .where(*filters)
+            .order_by(CashEntry.created_at.desc(), CashEntry.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
 
         rows = await session.execute(query)
         items = list(rows.scalars().all())
@@ -102,6 +146,7 @@ class EntryService:
                 CashEntry.currency_code,
                 func.coalesce(func.sum(debt_case), 0),
             )
+            .where(_not_deleted)
             .group_by(CashEntry.client_name, CashEntry.currency_code)
             .order_by(CashEntry.client_name.asc(), CashEntry.currency_code.asc())
         )
@@ -121,7 +166,7 @@ class EntryService:
         start_dt, end_dt = _local_day_bounds(target_date)
         result = await session.execute(
             select(CashEntry)
-            .where(CashEntry.created_at >= start_dt, CashEntry.created_at <= end_dt)
+            .where(CashEntry.created_at >= start_dt, CashEntry.created_at <= end_dt, _not_deleted)
             .order_by(CashEntry.created_at.asc(), CashEntry.id.asc())
         )
         return list(result.scalars().all())
@@ -143,7 +188,7 @@ class EntryService:
         query = select(
             CashEntry.currency_code,
             func.coalesce(func.sum(net_case), 0),
-        ).group_by(CashEntry.currency_code)
+        ).where(_not_deleted).group_by(CashEntry.currency_code)
 
         if start_dt is not None:
             query = query.where(CashEntry.created_at >= start_dt)
