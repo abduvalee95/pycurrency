@@ -53,6 +53,14 @@ class AIChatService:
                 )
                 return cls(client=client, model=settings.openrouter_model)
 
+        if settings.ai_provider == "google":
+            if settings.google_api_key:
+                client = AsyncOpenAI(
+                    api_key=settings.google_api_key,
+                    base_url=settings.google_base_url,
+                )
+                return cls(client=client, model=settings.google_model)
+
         return None
 
     async def answer(self, *, question: str, context: str) -> dict:

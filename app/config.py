@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
     deepseek_base_url: str = "https://api.deepseek.com/v1"
 
+    google_api_key: Optional[str] = None
+    google_model: str = "gemini-2.0-flash"
+    google_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
     allowed_telegram_ids: str = ""
     telegram_webapp_enforce: bool = False
 
