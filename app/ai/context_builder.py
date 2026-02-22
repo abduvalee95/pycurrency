@@ -66,25 +66,7 @@ class ChatContextBuilder:
         today_count = count_result.scalar_one()
         lines.append(f"\nBugungi operatsiyalar soni: {today_count}")
 
-        # 3. Today's net by currency
-        today_net_result = await session.execute(
-            select(
-                CashEntry.currency_code,
-                func.coalesce(func.sum(net_case), 0),
-            )
-            .where(CashEntry.created_at >= start_dt, CashEntry.created_at <= end_dt, _not_deleted)
-            .group_by(CashEntry.currency_code)
-        )
-        today_net = {code: amount for code, amount in today_net_result.all()}
-
-        lines.append("\nBugungi kunlik foyda (valyuta bo'yicha):")
-        if today_net:
-            for code in sorted(today_net):
-                lines.append(f"  {_fmt(today_net[code], code)}")
-        else:
-            lines.append("  (bugun operatsiya yo'q)")
-
-        # 4. Last 10 entries
+        # 3. Last 10 entries
         last_entries_result = await session.execute(
             select(CashEntry)
             .where(_not_deleted)
@@ -96,11 +78,11 @@ class ChatContextBuilder:
         lines.append("\nSo'nggi operatsiyalar:")
         if last_entries:
             for entry in last_entries:
-                direction = "📥 KIRIM" if entry.flow_direction == "INFLOW" else "📤 CHIQIM"
+                direction = "oldim +" if entry.flow_direction == "INFLOW" else "sotdim -"
                 note_str = f" | izoh: {entry.note}" if entry.note else ""
                 lines.append(
                     f"  #{entry.id} | {entry.created_at.strftime('%d.%m %H:%M')} | "
-                    f"{direction} | {_fmt(entry.amount, entry.currency_code)} | "
+                    f"{direction} {_fmt(entry.amount, entry.currency_code)} | "
                     f"mijoz: {entry.client_name}{note_str}"
                 )
         else:

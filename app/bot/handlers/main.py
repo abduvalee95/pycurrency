@@ -380,7 +380,7 @@ async def ai_confirm(callback, state: FSMContext):
 
 @router.message(F.text == texts.REPORTS)
 async def show_reports(message: Message) -> None:
-    """Show daily profit, balances, client debts and cash total."""
+    """Show balances, today's operations, and client debts."""
 
     if not await _ensure_allowed_message(message):
         return
@@ -390,27 +390,38 @@ async def show_reports(message: Message) -> None:
     today = datetime.now(ZoneInfo(settings.timezone)).date()
 
     async with db_manager.session_factory() as session:
-        daily = await service.daily_profit_by_currency(session, today)
         balances = await service.currency_balances(session)
         debts = await service.client_debts(session)
-        _, uzs_total = await service.cash_total(session)
+        _, kgs_total = await service.cash_total(session)
+        entries = await service.entries_for_day(session, today)
 
-    lines = [f"Hisobot ({today.isoformat()}):", "", "Kunlik foyda (valyuta bo'yicha):"]
-    for currency, amount in sorted(daily.items()):
-        lines.append(f"- {currency}: {_fmt(amount, currency)}")
+    lines = [f"📊 Hisobot ({today.isoformat()}):", ""]
 
-    lines.append("")
-    lines.append("Valyuta bo'yicha balans:")
+    lines.append("💰 Balans (valyuta bo'yicha):")
     for currency, amount in sorted(balances.items()):
-        lines.append(f"- {currency}: {_fmt(amount, currency)}")
+        lines.append(f"  {currency}: {_fmt(amount, currency)}")
 
     lines.append("")
-    lines.append("Client bo'yicha qarz (top 10):")
+    lines.append(f"Bugungi operatsiyalar soni: {len(entries)}")
+
+    if entries:
+        lines.append("")
+        lines.append("So'nggi operatsiyalar:")
+        for entry in entries[-10:]:
+            sign = "oldim +" if entry.flow_direction == "INFLOW" else "sotdim -"
+            note_str = f" | {entry.note}" if entry.note else ""
+            lines.append(
+                f"  #{entry.id} | {sign} {_fmt(entry.amount, entry.currency_code)} "
+                f"| {entry.client_name}{note_str}"
+            )
+
+    lines.append("")
+    lines.append("Mijoz bo'yicha qarz (top 10):")
     for client_name, currency, debt in debts[:10]:
-        lines.append(f"- {client_name} [{currency}]: {_fmt(debt, currency)}")
+        lines.append(f"  {client_name} [{currency}]: {_fmt(debt, currency)}")
 
     lines.append("")
-    lines.append(f"Jami kassadagi pul (UZS): {_fmt(uzs_total, 'UZS')}")
+    lines.append(f"💵 Jami kassadagi pul (KGS): {_fmt(kgs_total, 'KGS')}")
 
     await message.answer("\n".join(lines), reply_markup=main_menu_keyboard())
 
