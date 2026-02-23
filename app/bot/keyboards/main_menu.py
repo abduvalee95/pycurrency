@@ -21,7 +21,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     
     # Add Dashboard Web App button if URL is configured
     if settings.webapp_url:
-        webapp_btn = KeyboardButton(text="📊 Dashboard (Web)", web_app=WebAppInfo(url=settings.webapp_url))
+        webapp_btn = KeyboardButton(text="📊 Дашборд (Web)", web_app=WebAppInfo(url=settings.webapp_url))
         keyboard.insert(0, [webapp_btn])
 
     return ReplyKeyboardMarkup(

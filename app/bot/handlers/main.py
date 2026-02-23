@@ -35,7 +35,7 @@ async def _ensure_allowed_message(message: Message) -> bool:
     settings = get_settings()
     user_id = message.from_user.id if message.from_user else None
     if user_id is None or not is_bot_user_allowed(user_id, settings):
-        await message.answer("Access denied.")
+        await message.answer("Доступ запрещен.")
         return False
     return True
 
@@ -44,7 +44,7 @@ async def _ensure_allowed_callback(callback) -> bool:
     settings = get_settings()
     user_id = callback.from_user.id if callback.from_user else None
     if user_id is None or not is_bot_user_allowed(user_id, settings):
-        await callback.message.answer("Access denied.")
+        await callback.message.answer("Доступ запрещен.")
         await callback.answer()
         return False
     return True
@@ -52,11 +52,11 @@ async def _ensure_allowed_callback(callback) -> bool:
 
 def _summary_from_data(data: dict) -> str:
     return (
-        "Tasdiqlang:\n"
-        f"Amount: {_fmt(Decimal(data['amount']), data['currency_code'])}\n"
-        f"Flow: {data['flow_direction']}\n"
-        f"Client: {data['client_name']}\n"
-        f"Note: {data.get('note') or '-'}"
+        "Подтвердите:\n"
+        f"Сумма: {_fmt(Decimal(data['amount']), data['currency_code'])}\n"
+        f"Тип: {data['flow_direction']}\n"
+        f"Клиент: {data['client_name']}\n"
+        f"Заметка: {data.get('note') or '-'}"
     )
 
 
@@ -76,7 +76,7 @@ async def on_greeting(message: Message) -> None:
 
     if not await _ensure_allowed_message(message):
         return
-    await message.answer("Salom. Men tayyorman. ➕ New Entry yoki 🤖 AI Assistant ni tanlang.", reply_markup=main_menu_keyboard())
+    await message.answer("Привет. Я готов. Выберите ➕ Новая запись или 🤖 AI Ассистент.", reply_markup=main_menu_keyboard())
 
 
 @router.message(F.text == texts.CANCEL_OPERATION)
@@ -86,7 +86,7 @@ async def cancel_operation(message: Message, state: FSMContext) -> None:
     if not await _ensure_allowed_message(message):
         return
     await state.clear()
-    await message.answer("Operation cancelled.", reply_markup=main_menu_keyboard())
+    await message.answer("Операция отменена.", reply_markup=main_menu_keyboard())
 
 
 @router.message(Command("export_today"))
@@ -104,7 +104,7 @@ async def start_new_entry(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     await state.set_state(ManualEntryStates.waiting_amount)
-    await message.answer("1/5 Amount kiriting (masalan: 1000)")
+    await message.answer("1/5 Введите сумму (например: 1000)")
 
 
 @router.message(ManualEntryStates.waiting_amount)
@@ -119,12 +119,12 @@ async def entry_amount(message: Message, state: FSMContext) -> None:
         if amount <= 0:
             raise ValueError
     except Exception:  # noqa: BLE001
-        await message.answer("Amount noto'g'ri. Raqam kiriting.")
+        await message.answer("Неверная сумма. Введите число.")
         return
 
     await state.update_data(amount=str(amount))
     await state.set_state(ManualEntryStates.waiting_currency)
-    await message.answer("2/5 Currency kiriting: USD / RUB / UZS / KGS / EUR")
+    await message.answer("2/5 Введите валюту: USD / RUB / UZS / KGS / EUR")
 
 
 @router.message(ManualEntryStates.waiting_currency)
@@ -136,12 +136,12 @@ async def entry_currency(message: Message, state: FSMContext) -> None:
 
     currency = (message.text or "").strip().upper()
     if currency not in {"USD", "RUB", "UZS", "KGS", "EUR"}:
-        await message.answer("Currency faqat USD, RUB, UZS, KGS yoki EUR bo'lishi kerak.")
+        await message.answer("Валюта должна быть USD, RUB, UZS, KGS или EUR.")
         return
 
     await state.update_data(currency_code=currency)
     await state.set_state(ManualEntryStates.waiting_flow)
-    await message.answer(f"3/5 Flow tanlang: {texts.FLOW_IN} yoki {texts.FLOW_OUT}")
+    await message.answer(f"3/5 Выберите тип: {texts.FLOW_IN} или {texts.FLOW_OUT}")
 
 
 @router.message(ManualEntryStates.waiting_flow)
@@ -154,15 +154,15 @@ async def entry_flow(message: Message, state: FSMContext) -> None:
     raw = (message.text or "").strip().lower()
     if "in" in raw or "📥" in raw:
         flow = "INFLOW"
-    elif "out" in raw or "📤" in raw:
+    elif "out" in raw or "📤" in raw or "расход" in raw:
         flow = "OUTFLOW"
     else:
-        await message.answer(f"Flow noto'g'ri. {texts.FLOW_IN} yoki {texts.FLOW_OUT} yozing.")
+        await message.answer(f"Неверный тип. Напишите {texts.FLOW_IN} или {texts.FLOW_OUT}.")
         return
 
     await state.update_data(flow_direction=flow)
     await state.set_state(ManualEntryStates.waiting_client)
-    await message.answer("4/5 Client name kiriting")
+    await message.answer("4/5 Введите имя клиента")
 
 
 @router.message(ManualEntryStates.waiting_client)
@@ -174,12 +174,12 @@ async def entry_client(message: Message, state: FSMContext) -> None:
 
     client_name = (message.text or "").strip()
     if not client_name:
-        await message.answer("Client name bo'sh bo'lmasin.")
+        await message.answer("Имя клиента не может быть пустым.")
         return
 
     await state.update_data(client_name=client_name)
     await state.set_state(ManualEntryStates.waiting_note)
-    await message.answer("5/5 Note (optional). O'tkazib yuborish uchun '-' yuboring.")
+    await message.answer("5/5 Заметка (опционально). Отправьте '-', чтобы пропустить.")
 
 
 @router.message(ManualEntryStates.waiting_note)
@@ -196,8 +196,8 @@ async def entry_note(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Tasdiqlash", callback_data="manual_confirm")],
-            [InlineKeyboardButton(text="Bekor qilish", callback_data="manual_cancel")],
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data="manual_confirm")],
+            [InlineKeyboardButton(text="❌ Отменить", callback_data="manual_cancel")],
         ]
     )
 
@@ -213,7 +213,7 @@ async def manual_cancel(callback, state: FSMContext):
         return
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.clear()
-    await callback.message.answer("Entry cancelled.", reply_markup=main_menu_keyboard())
+    await callback.message.answer("Запись отменена.", reply_markup=main_menu_keyboard())
     await callback.answer()
 
 
@@ -241,9 +241,9 @@ async def manual_confirm(callback, state: FSMContext):
                 payload=payload,
                 created_by_telegram_id=callback.from_user.id,
             )
-        await callback.message.answer(f"Entry #{entry.id} saqlandi.", reply_markup=main_menu_keyboard())
+        await callback.message.answer(f"Запись #{entry.id} сохранена.", reply_markup=main_menu_keyboard())
     except Exception as exc:  # noqa: BLE001
-        await callback.message.answer(f"Xatolik: {exc}")
+        await callback.message.answer(f"Ошибка: {exc}")
 
     await state.clear()
     await callback.answer()
@@ -257,7 +257,7 @@ async def start_ai_input(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     await state.set_state(AIInputStates.waiting_raw_text)
-    await message.answer("AI uchun matn yuboring. Masalan: 'Ali 1000 usd oldim'.")
+    await message.answer("Отправьте текст для AI. Например: 'Али дал 1000 usd'.")
 
 
 @router.message(AIInputStates.waiting_raw_text)
@@ -268,8 +268,8 @@ async def ai_raw_input(message: Message, state: FSMContext) -> None:
         return
 
     text = (message.text or "").strip()
-    if text.lower() in {"hello", "hi", "hey", "salom", "assalomu alaykum"}:
-        await message.answer("Salom. Entry matnini yuboring: 'Ali 1000 usd oldim'.")
+    if text.lower() in {"hello", "hi", "hey", "salom", "привет", "здравствуйте"}:
+        await message.answer("Привет. Отправьте текст записи: 'Али дал 1000 usd'.")
         return
 
     try:
@@ -283,7 +283,7 @@ async def ai_raw_input(message: Message, state: FSMContext) -> None:
     if not data.get("client_name"):
         await state.update_data(ai_parsed=data)
         await state.set_state(AIInputStates.waiting_client)
-        await message.answer("Client name topilmadi. Kiriting:")
+        await message.answer("Имя клиента не найдено. Введите:")
         return
 
     await state.update_data(ai_parsed=data)
@@ -291,9 +291,9 @@ async def ai_raw_input(message: Message, state: FSMContext) -> None:
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Tasdiqlash", callback_data="ai_confirm")],
-            [InlineKeyboardButton(text="O'zgartirish", callback_data="ai_edit")],
-            [InlineKeyboardButton(text="Bekor qilish", callback_data="ai_cancel")],
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data="ai_confirm")],
+            [InlineKeyboardButton(text="✏️ Изменить", callback_data="ai_edit")],
+            [InlineKeyboardButton(text="❌ Отменить", callback_data="ai_cancel")],
         ]
     )
     await message.answer(_summary_from_data(data), reply_markup=keyboard)
@@ -308,7 +308,7 @@ async def ai_client_input(message: Message, state: FSMContext) -> None:
 
     client_name = (message.text or "").strip()
     if not client_name:
-        await message.answer("Client name bo'sh bo'lmasin.")
+        await message.answer("Имя клиента не может быть пустым.")
         return
 
     data = await state.get_data()
@@ -319,9 +319,9 @@ async def ai_client_input(message: Message, state: FSMContext) -> None:
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Tasdiqlash", callback_data="ai_confirm")],
-            [InlineKeyboardButton(text="O'zgartirish", callback_data="ai_edit")],
-            [InlineKeyboardButton(text="Bekor qilish", callback_data="ai_cancel")],
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data="ai_confirm")],
+            [InlineKeyboardButton(text="✏️ Изменить", callback_data="ai_edit")],
+            [InlineKeyboardButton(text="❌ Отменить", callback_data="ai_cancel")],
         ]
     )
     await message.answer(_summary_from_data(parsed), reply_markup=keyboard)
@@ -334,7 +334,7 @@ async def ai_edit(callback, state: FSMContext):
     if not await _ensure_allowed_callback(callback):
         return
     await state.set_state(AIInputStates.waiting_raw_text)
-    await callback.message.answer("Yangi matn yuboring.")
+    await callback.message.answer("Отправьте новый текст.")
     await callback.answer()
 
 
@@ -345,7 +345,7 @@ async def ai_cancel(callback, state: FSMContext):
     if not await _ensure_allowed_callback(callback):
         return
     await state.clear()
-    await callback.message.answer("AI flow cancelled.", reply_markup=main_menu_keyboard())
+    await callback.message.answer("AI ввод отменен.", reply_markup=main_menu_keyboard())
     await callback.answer()
 
 
@@ -359,7 +359,7 @@ async def ai_confirm(callback, state: FSMContext):
     data = await state.get_data()
     parsed = data.get("ai_parsed")
     if not parsed:
-        await callback.message.answer("No data.")
+        await callback.message.answer("Нет данных.")
         await callback.answer()
         return
 
@@ -372,9 +372,9 @@ async def ai_confirm(callback, state: FSMContext):
                 payload=payload,
                 created_by_telegram_id=callback.from_user.id,
             )
-        await callback.message.answer(f"AI entry #{entry.id} saqlandi.", reply_markup=main_menu_keyboard())
+        await callback.message.answer(f"AI запись #{entry.id} сохранена.", reply_markup=main_menu_keyboard())
     except Exception as exc:  # noqa: BLE001
-        await callback.message.answer(f"Xatolik: {exc}")
+        await callback.message.answer(f"Ошибка: {exc}")
 
     await state.clear()
     await callback.answer()
@@ -398,29 +398,29 @@ async def show_reports(message: Message) -> None:
         _, kgs_total = await service.cash_total(session)
         entries = await service.entries_for_day(session, today)
 
-    lines = [f"📊 Hisobot ({today.isoformat()}):", ""]
+    lines = [f"📊 Отчет ({today.isoformat()}):", ""]
 
-    lines.append("💰 Balans (valyuta bo'yicha):")
+    lines.append("💰 Баланс (по валютам):")
     for currency, amount in sorted(balances.items()):
         lines.append(f"  {currency}: {_fmt(amount, currency)}")
 
     lines.append("")
-    lines.append("📈 Bugungi sof foyda (Kirim - Chiqim):")
+    lines.append("📈 Сегодняшняя чистая прибыль (Приход - Расход):")
     if daily_profits:
         for currency, amount in sorted(daily_profits.items()):
             sign = "+" if amount >= 0 else ""
             lines.append(f"  {currency}: {sign}{_fmt(amount, currency)}")
     else:
-        lines.append("  Bugun operatsiyalar yo'q.")
+        lines.append("  Сегодня операций нет.")
 
     lines.append("")
-    lines.append(f"Bugungi operatsiyalar soni: {len(entries)}")
+    lines.append(f"Количество операций сегодня: {len(entries)}")
 
     if entries:
         lines.append("")
-        lines.append("So'nggi operatsiyalar:")
+        lines.append("Последние операции:")
         for entry in entries[-10:]:
-            sign = "oldim +" if entry.flow_direction == "INFLOW" else "sotdim -"
+            sign = "взял +" if entry.flow_direction == "INFLOW" else "продал -"
             note_str = f" | {entry.note}" if entry.note else ""
             lines.append(
                 f"  #{entry.id} | {sign} {_fmt(entry.amount, entry.currency_code)} "
@@ -428,12 +428,12 @@ async def show_reports(message: Message) -> None:
             )
 
     lines.append("")
-    lines.append("Mijoz bo'yicha qarz (top 10):")
+    lines.append("Долги по клиентам (топ 10):")
     for client_name, currency, debt in debts[:10]:
         lines.append(f"  {client_name} [{currency}]: {_fmt(debt, currency)}")
 
     lines.append("")
-    lines.append(f"💵 Jami kassadagi pul (KGS): {_fmt(kgs_total, 'KGS')}")
+    lines.append(f"💵 Итого в кассе (KGS): {_fmt(kgs_total, 'KGS')}")
 
     await message.answer("\n".join(lines), reply_markup=main_menu_keyboard())
 
@@ -458,12 +458,12 @@ async def export_csv(message: Message) -> None:
         entries_file = FSInputFile(str(result.entries_csv), filename=result.entries_csv.name)
         reports_file = FSInputFile(str(result.reports_csv), filename=result.reports_csv.name)
 
-        await message.answer_document(entries_file, caption=f"📋 Entries: {today.isoformat()}")
-        await message.answer_document(reports_file, caption=f"📊 Reports: {today.isoformat()}")
-        await message.answer("✅ CSV fayllar yuborildi!", reply_markup=main_menu_keyboard())
+        await message.answer_document(entries_file, caption=f"📋 Записи: {today.isoformat()}")
+        await message.answer_document(reports_file, caption=f"📊 Отчеты: {today.isoformat()}")
+        await message.answer("✅ CSV файлы отправлены!", reply_markup=main_menu_keyboard())
 
     except Exception as exc:  # noqa: BLE001
-        await message.answer(f"Export xatolik: {exc}", reply_markup=main_menu_keyboard())
+        await message.answer(f"Ошибка экспорта: {exc}", reply_markup=main_menu_keyboard())
 
 
 @router.message(Command("delete"))
@@ -475,7 +475,7 @@ async def delete_entry_command(message: Message) -> None:
 
     parts = (message.text or "").strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("❌ Foydalanish: /delete <entry_id>\nMasalan: /delete 5")
+        await message.answer("❌ Использование: /delete <entry_id>\nНапример: /delete 5")
         return
 
     entry_id = int(parts[1])
@@ -485,23 +485,23 @@ async def delete_entry_command(message: Message) -> None:
         entry = await service.get_entry_by_id(session, entry_id)
 
     if entry is None:
-        await message.answer(f"❌ Entry #{entry_id} topilmadi yoki allaqachon o'chirilgan.")
+        await message.answer(f"❌ Запись #{entry_id} не найдена или уже удалена.")
         return
 
-    direction = "📥 KIRIM" if entry.flow_direction == "INFLOW" else "📤 CHIQIM"
+    direction = "📥 ПРИХОД" if entry.flow_direction == "INFLOW" else "📤 РАСХОД"
     summary = (
-        f"🗑 O'chirmoqchimisiz?\n\n"
+        f"🗑 Хотите удалить?\n\n"
         f"#{entry.id} | {direction}\n"
-        f"Amount: {_fmt(entry.amount, entry.currency_code)}\n"
-        f"Client: {entry.client_name}\n"
-        f"Note: {entry.note or '-'}\n"
-        f"Sana: {entry.created_at.strftime('%d.%m.%Y %H:%M')}"
+        f"Сумма: {_fmt(entry.amount, entry.currency_code)}\n"
+        f"Клиент: {entry.client_name}\n"
+        f"Заметка: {entry.note or '-'}\n"
+        f"Дата: {entry.created_at.strftime('%d.%m.%Y %H:%M')}"
     )
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Ha, o'chir", callback_data=f"del_yes_{entry_id}")],
-            [InlineKeyboardButton(text="❌ Yo'q, bekor qil", callback_data="del_no")],
+            [InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"del_yes_{entry_id}")],
+            [InlineKeyboardButton(text="❌ Нет, отменить", callback_data="del_no")],
         ]
     )
     await message.answer(summary, reply_markup=keyboard)
@@ -523,12 +523,12 @@ async def confirm_delete(callback, state: FSMContext):
 
     if entry:
         await callback.message.answer(
-            f"✅ Entry #{entry_id} o'chirildi (soft delete).\n"
-            f"Qayta tiklash uchun: /restore {entry_id}",
+            f"✅ Запись #{entry_id} удалена (soft delete).\n"
+            f"Для восстановления: /restore {entry_id}",
             reply_markup=main_menu_keyboard(),
         )
     else:
-        await callback.message.answer(f"❌ Entry #{entry_id} topilmadi.", reply_markup=main_menu_keyboard())
+        await callback.message.answer(f"❌ Запись #{entry_id} не найдена.", reply_markup=main_menu_keyboard())
 
     await callback.answer()
 
@@ -540,8 +540,7 @@ async def cancel_delete(callback, state: FSMContext):
     if not await _ensure_allowed_callback(callback):
         return
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("O'chirish bekor qilindi.", reply_markup=main_menu_keyboard())
+    await callback.message.answer("Удаление отменено.", reply_markup=main_menu_keyboard())
     await callback.answer()
 
 
@@ -554,7 +553,7 @@ async def restore_entry_command(message: Message) -> None:
 
     parts = (message.text or "").strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("❌ Foydalanish: /restore <entry_id>\nMasalan: /restore 5")
+        await message.answer("❌ Использование: /restore <entry_id>\nНапример: /restore 5")
         return
 
     entry_id = int(parts[1])
@@ -565,13 +564,13 @@ async def restore_entry_command(message: Message) -> None:
 
     if entry:
         await message.answer(
-            f"✅ Entry #{entry_id} qayta tiklandi!\n"
-            f"Amount: {_fmt(entry.amount, entry.currency_code)}\n"
-            f"Client: {entry.client_name}",
+            f"✅ Запись #{entry_id} восстановлена!\n"
+            f"Сумма: {_fmt(entry.amount, entry.currency_code)}\n"
+            f"Клиент: {entry.client_name}",
             reply_markup=main_menu_keyboard(),
         )
     else:
-        await message.answer(f"❌ Entry #{entry_id} topilmadi yoki allaqachon faol.", reply_markup=main_menu_keyboard())
+        await message.answer(f"❌ Запись #{entry_id} не найдена или уже активна.", reply_markup=main_menu_keyboard())
 
 
 @router.message(Command("q"))
@@ -591,9 +590,9 @@ async def quick_entry_command(message: Message) -> None:
     parts = raw.split(None, 5)  # /q amount currency dir client [note]
 
     usage = (
-        "❌ Format: /q <miqdor> <valyuta> <in|out> <client> [izoh]\n"
-        "Misol: /q 1000 usd in Ali\n"
-        "       /q 500 rub out Karim qarz uchun"
+        "❌ Формат: /q <сумма> <валюта> <in|out> <клиент> [заметка]\n"
+        "Пример: /q 1000 usd in Али\n"
+        "       /q 500 rub out Карим за долг"
     )
 
     if len(parts) < 5:
@@ -605,12 +604,12 @@ async def quick_entry_command(message: Message) -> None:
     direction_raw = direction_raw.lower()
 
     # Parse direction
-    if direction_raw in {"in", "kirim", "+", "i"}:
+    if direction_raw in {"in", "kirim", "+", "i", "приход"}:
         direction = "INFLOW"
-    elif direction_raw in {"out", "chiqim", "-", "o"}:
+    elif direction_raw in {"out", "chiqim", "-", "o", "расход"}:
         direction = "OUTFLOW"
     else:
-        await message.answer(f"❌ Yo'nalish noto'g'ri: '{direction_raw}'\nUse: in yoki out")
+        await message.answer(f"❌ Неверное направление: '{direction_raw}'\nИспользуйте: in или out")
         return
 
     # Parse amount
@@ -619,14 +618,14 @@ async def quick_entry_command(message: Message) -> None:
         if amount <= 0:
             raise ValueError
     except (Exception,):
-        await message.answer(f"❌ Miqdor noto'g'ri: '{amount_str}'")
+        await message.answer(f"❌ Неверная сумма: '{amount_str}'")
         return
 
     # Parse currency
     from app.utils.currency import normalize_currency
     currency = normalize_currency(currency_raw)
     if currency is None:
-        await message.answer(f"❌ Valyuta noto'g'ri: '{currency_raw}'\nRuxsat etilgan: USD, RUB, UZS, KGS, EUR")
+        await message.answer(f"❌ Неверная валюта: '{currency_raw}'\nРазрешены: USD, RUB, UZS, KGS, EUR")
         return
 
     try:
@@ -648,9 +647,9 @@ async def quick_entry_command(message: Message) -> None:
         entry = await service.create_entry(session, payload, user_id)
 
     sign = "📥 +" if direction == "INFLOW" else "📤 -"
-    note_str = f"\nIzoh: {note}" if note else ""
+    note_str = f"\nЗаметка: {note}" if note else ""
     await message.answer(
-        f"✅ #{entry.id} saqlandi!\n"
+        f"✅ #{entry.id} сохранена!\n"
         f"{sign} {_fmt(entry.amount, entry.currency_code)} | {entry.client_name}{note_str}",
         reply_markup=main_menu_keyboard(),
     )
@@ -674,10 +673,10 @@ async def edit_entry_command(message: Message) -> None:
 
     parts = (message.text or "").strip().split(None, 3)
     usage = (
-        "❌ Format: /edit <id> <field> <yangi_qiymat>\n"
-        "Fields: amount, currency, direction, client, note\n"
-        "Misol: /edit 5 amount 1500\n"
-        "       /edit 5 client Nodir"
+        "❌ Формат: /edit <id> <поле> <новое_значение>\n"
+        "Поля: amount, currency, direction, client, note\n"
+        "Пример: /edit 5 amount 1500\n"
+        "       /edit 5 client Нодир"
     )
 
     if len(parts) < 4:
@@ -687,7 +686,7 @@ async def edit_entry_command(message: Message) -> None:
     _, entry_id_str, field, new_value = parts
 
     if not entry_id_str.isdigit():
-        await message.answer("❌ Entry ID raqam bo'lishi kerak.")
+        await message.answer("❌ ID записи должен быть числом.")
         return
 
     entry_id = int(entry_id_str)
@@ -695,7 +694,7 @@ async def edit_entry_command(message: Message) -> None:
 
     allowed_fields = {"amount", "currency", "direction", "client", "note"}
     if field not in allowed_fields:
-        await message.answer(f"❌ Noto'g'ri field: '{field}'\nRuxsat: {', '.join(sorted(allowed_fields))}")
+        await message.answer(f"❌ Неверное поле: '{field}'\nРазрешены: {', '.join(sorted(allowed_fields))}")
         return
 
     service = EntryService()
@@ -704,7 +703,7 @@ async def edit_entry_command(message: Message) -> None:
         entry = await service.get_entry_by_id(session, entry_id)
 
     if entry is None:
-        await message.answer(f"❌ Entry #{entry_id} topilmadi.")
+        await message.answer(f"❌ Запись #{entry_id} не найдена.")
         return
 
     # Build updated payload
@@ -736,7 +735,7 @@ async def edit_entry_command(message: Message) -> None:
             note=new_note,
         )
     except Exception as exc:
-        await message.answer(f"❌ Yangi qiymat noto'g'ri: {exc}")
+        await message.answer(f"❌ Новое значение неверно: {exc}")
         return
 
     # Soft delete old, create new
@@ -748,9 +747,9 @@ async def edit_entry_command(message: Message) -> None:
 
     sign = "📥 +" if new_entry.flow_direction == "INFLOW" else "📤 -"
     await message.answer(
-        f"✅ Entry #{entry_id} yangilandi → #{new_entry.id}\n"
+        f"✅ Запись #{entry_id} обновлена → #{new_entry.id}\n"
         f"{sign} {_fmt(new_entry.amount, new_entry.currency_code)} | {new_entry.client_name}\n"
-        f"(Eski #{entry_id} arxivlandi)",
+        f"(Старая #{entry_id} заархивирована)",
         reply_markup=main_menu_keyboard(),
     )
 

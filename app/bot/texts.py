@@ -1,13 +1,13 @@
 """Telegram bot UI text constants for simple cashflow mode."""
 
-NEW_ENTRY = "➕ New Entry"
-REPORTS = "📊 Reports"
-AI_ASSISTANT_INPUT = "🤖 AI Assistant"
-AI_CHAT = "💬 AI Chat"
-EXPORT_CSV = "📤 Export CSV"
-CANCEL_OPERATION = "❌ Cancel"
+NEW_ENTRY = "➕ Новая запись"
+REPORTS = "📊 Отчеты"
+AI_ASSISTANT_INPUT = "🤖 AI Ассистент"
+AI_CHAT = "💬 AI Чат"
+EXPORT_CSV = "📤 Экспорт CSV"
+CANCEL_OPERATION = "❌ Отмена"
 
-FLOW_IN = "📥 Inflow"
-FLOW_OUT = "📤 Outflow"
+FLOW_IN = "📥 Приход"
+FLOW_OUT = "📤 Расход"
 
-MAIN_MENU_TITLE = "Amalni tanlang:"
+MAIN_MENU_TITLE = "Выберите действие:"
