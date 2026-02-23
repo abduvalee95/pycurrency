@@ -53,7 +53,7 @@ async def client_debts_report(
     """Return client debt list by currency."""
 
     rows = await service.client_debts(session)
-    items = [ClientDebtItem(client_name=client, currency_code=currency, debt_amount=debt) for client, currency, debt in rows]
+    items = [ClientDebtItem(client_name=client, currency_code=currency, debt_amount=debt) for client, currency, debt, _ in rows]
     return ClientDebtReport(items=items)
 
 
