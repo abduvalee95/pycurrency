@@ -50,9 +50,18 @@ async def get_dashboard_reports(session: AsyncSession = Depends(get_db_session))
     )
     
     return {
+        "server_time": datetime.now(ZoneInfo(settings.timezone)).isoformat(),
         "balances": balances,
         "daily_profits": daily_profits,
-        "debts": [{"client": c, "currency": cur, "amount": float(a)} for c, cur, a in debts],
+        "debts": [
+            {
+                "client": c, 
+                "currency": cur, 
+                "amount": float(a), 
+                "last_updated": lu.isoformat() if lu else None
+            } 
+            for c, cur, a, lu in debts
+        ],
         "recent_entries": [
             {
                 "id": e.id,

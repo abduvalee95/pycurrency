@@ -139,8 +139,8 @@ class EntryService:
 
         return await self._net_by_currency(session, start_dt=None, end_dt=None)
 
-    async def client_debts(self, session: AsyncSession) -> list[tuple[str, str, Decimal]]:
-        """Compute client debt per currency as outflow - inflow."""
+    async def client_debts(self, session: AsyncSession) -> list[tuple[str, str, Decimal, datetime]]:
+        """Compute client debt per currency as outflow - inflow, including last update time."""
 
         debt_case = case(
             (CashEntry.flow_direction == "OUTFLOW", CashEntry.amount),
@@ -152,13 +152,14 @@ class EntryService:
                 CashEntry.client_name,
                 CashEntry.currency_code,
                 func.coalesce(func.sum(debt_case), 0),
+                func.max(CashEntry.created_at),
             )
             .where(_not_deleted)
             .group_by(CashEntry.client_name, CashEntry.currency_code)
             .order_by(CashEntry.client_name.asc(), CashEntry.currency_code.asc())
         )
         result = await session.execute(query)
-        return [(client, currency, amount) for client, currency, amount in result.all()]
+        return [(r[0], r[1], r[2], r[3]) for r in result.all()]
 
     async def cash_total(self, session: AsyncSession) -> tuple[dict[str, Decimal], Decimal]:
         """Return by-currency balances and explicit UZS total."""

@@ -45,119 +45,75 @@
       </div>
 
       <template v-else>
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
-          <h1 class="text-2xl font-bold">📊 Kassa Dashboard</h1>
-          <button
-            @click="fetchData"
-            class="text-blue-500 flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
-          >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              ></path>
-            </svg>
-            Yangilash
-          </button>
-        </div>
-
-        <!-- Balances -->
-        <div class="card space-y-4">
-          <h2 class="text-xl font-semibold flex items-center gap-2">
-            💰  Balans
-          </h2>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div
-              v-for="(amount, currency) in data.balances"
-              :key="currency"
-              class="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700"
-            >
-              <div class="text-sm font-medium text-gray-500 mb-1">
-                {{ currency }}
-              </div>
-              <div
-                class="font-bold text-2xl"
-                :class="amount < 0 ? 'text-red-500' : 'text-gray-900 dark:text-white'"
-              >
-                {{ formatNumber(amount) }}
-              </div>
+            <!-- Header -->
+            <div class="flex flex-col mb-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold">📊 Kassa Dashboard</h1>
+                    <button @click="fetchData" class="text-blue-500 flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg active:scale-95 transition-transform">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Yangilash
+                    </button>
+                </div>
+                <div v-if="data.server_time" class="text-xs text-gray-400 mt-1">
+                    Oxirgi yangilanish: {{ new Date(data.server_time).toLocaleString() }}
+                </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Daily Profit -->
-        <div class="card space-y-4">
-          <h2 class="text-xl font-semibold flex items-center gap-2">
-            📈 Bugungi Sof Foyda (Kirim-Chiqim)
-          </h2>
-          <div
-            v-if="Object.keys(data.daily_profits).length === 0"
-            class="text-gray-500 py-2"
-          >
-            📈 Bugun operatsiyalar yo'q.
-          </div>
-          <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div
-              v-for="(amount, currency) in data.daily_profits"
-              :key="'prof_'+currency"
-              class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800"
-            >
-              <div
-                class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1"
-              >
-                {{ currency }}
-              </div>
-              <div
-                class="font-bold text-2xl"
-                :class="amount < 0 ? 'text-red-500' : 'text-blue-700 dark:text-blue-300'"
-              >
-                <span v-if="amount < 0" class="inline-flex items-center">
-                  <img src="https://img.icons8.com/fluent/32/export.png" class="w-4 h-4 mr-1" />
-                </span>
-                <span v-else>+</span>{{ formatNumber(amount) }}
-              </div>
+            <!-- Balances -->
+            <div class="card space-y-4">
+                <h2 class="text-xl font-semibold flex items-center gap-2">💰 Balans</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div v-for="(amount, currency) in data.balances" :key="currency" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div class="text-sm font-medium text-gray-500 mb-1">{{ currency }}</div>
+                        <div class="font-bold text-2xl" :class="amount < 0 ? 'text-red-500' : 'text-gray-900 dark:text-white'">
+                            {{ formatNumber(amount) }}
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Charts -->
-        <div class="card">
-          <h2 class="text-xl font-semibold mb-4">
-            💳 Tranzaksiyalar (So'nggi 20)
-          </h2>
-          <div class="relative h-48 w-full">
-            <canvas id="txChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Debtors -->
-        <div class="card space-y-4" v-if="data.debts && data.debts.length > 0">
-          <h2 class="text-xl font-semibold">🙎‍♂️ Mijoz Qarzlari (Top 10)</h2>
-          <div class="space-y-2">
-            <div
-              v-for="debt in data.debts"
-              :key="debt.client+debt.currency"
-              class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-            >
-              <span class="font-medium text-gray-800 dark:text-gray-200"
-                >{{ debt.client }}
-                </span
-              >
-              <span
-                class="font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded"
-                >{{ formatNumber(debt.amount) }} {{ debt.currency }}</span
-              >
+            <!-- Daily Profit -->
+            <div class="card space-y-4">
+                <h2 class="text-xl font-semibold flex items-center gap-2">📈 Bugungi Sof Foyda</h2>
+                <div v-if="Object.keys(data.daily_profits).length === 0" class="text-gray-500 py-2">📈 Bugun operatsiyalar yo'q.</div>
+                <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div v-for="(amount, currency) in data.daily_profits" :key="'prof_'+currency" class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                        <div class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">{{ currency }}</div>
+                        <div class="font-bold text-2xl" :class="amount < 0 ? 'text-red-500' : 'text-blue-700 dark:text-blue-300'">
+                            <span v-if="amount < 0" class="inline-flex items-center">
+                                <img src="https://img.icons8.com/fluent/32/export.png" class="w-4 h-4 mr-1" />
+                            </span>
+                            <span v-else>+</span>{{ formatNumber(amount) }}
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
+            
+            <!-- Charts -->
+            <div class="card">
+                <h2 class="text-xl font-semibold mb-4">💳 Tranzaksiyalar (So'nggi 20)</h2>
+                <div class="relative h-48 w-full">
+                    <canvas id="txChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Debtors -->
+            <div class="card space-y-4" v-if="data.debts && data.debts.length > 0">
+                <h2 class="text-xl font-semibold">🙎‍♂️ Mijoz Qarzlari (Top 10)</h2>
+                <div class="space-y-2">
+                    <div v-for="debt in data.debts" :key="debt.client+debt.currency" class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-800 dark:text-gray-200">{{ debt.client }}</span>
+                            <span v-if="debt.last_updated" class="text-[10px] text-gray-400">
+                                Faollik: {{ new Date(debt.last_updated).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) }}
+                            </span>
+                        </div>
+                        <span class="font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded">
+                            {{ formatNumber(debt.amount) }} {{ debt.currency }}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
         <!-- Deep dive: Recent transactions -->
         <div class="card space-y-4">
