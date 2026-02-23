@@ -28,6 +28,12 @@ class RuleBasedAIParser:
     """Simple parser used when provider is unavailable."""
 
     def parse(self, text: str) -> dict:
+        note: Optional[str] = None
+        note_match = re.search(r"(?<!\d)[,.:](?!\d)\s*(.+)", text, re.DOTALL)
+        if note_match:
+            note = note_match.group(1).strip()
+            text = text[:note_match.start()]
+
         cleaned = " ".join(text.strip().split())
         lowered = cleaned.lower()
 
@@ -35,11 +41,6 @@ class RuleBasedAIParser:
         currency = self._extract_currency(lowered)
         flow = self._detect_flow(lowered)
         client_name = self._extract_client_name(cleaned)
-
-        note: Optional[str] = None
-        note_match = re.search(r"[,.:]\s*(.+)", text, re.DOTALL)
-        if note_match:
-            note = note_match.group(1).strip()
 
         if rate is not None:
             rate_text = f"rate: {_format_decimal(rate)}"

@@ -75,7 +75,7 @@ class BackupService:
             for currency, amount in sorted(balances.items()):
                 writer.writerow(["currency_balance", currency, str(amount), ""])
 
-            for client_name, currency, debt in debts:
+            for client_name, currency, debt, _ in debts:
                 writer.writerow(["client_debt", client_name, str(debt), currency])
 
             for currency, amount in sorted(by_currency.items()):

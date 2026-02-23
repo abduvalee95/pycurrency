@@ -94,7 +94,8 @@ class AIChatService:
             "⚠️ 'berdim' so'zi DOIM OUTFLOW (SELL) bo'ladi! (masalan: 'aliakaga 100$ berdim' -> OUTFLOW, client='aliaka').\n\n"
 
             "IZOH (NOTE) QOIDASI:\n"
-            "- Agar xabarda nuqta (.), vergul (,) yoki ikki nuqta (:) qatnashsa, ushbu belgidan keyin kelgan barcha matnni 'note' ga yozing.\n\n"
+            "- Agar xabarda nuqta (.), vergul (,) yoki ikki nuqta (:) qatnashsa, ushbu belgidan keyin kelgan barcha matnni 'note' ga yozing.\n"
+            "- LEKIN: Raqamlar orasidagi o'nlik kasrni (, yoki .) note deb hisoblamang! (Masalan '100,5' yozilsa, bu 100.5 miqdor, note emas).\n\n"
 
             "VALYUTA QOIDALARI:\n"
             "- 'som', 'сом', 'kgs' = KGS (asosiy valyuta)\n"

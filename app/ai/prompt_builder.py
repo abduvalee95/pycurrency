@@ -15,6 +15,7 @@ def build_transaction_parse_prompt() -> str:
         "client_name can be null if not present. Extract raw names without suffixes (e.g. 'aliakaga' -> 'aliaka'). "
         "note can be null. If user mentions rate (e.g. 12100), place it in note as 'rate: 12100'. "
         "If there is a punctuation mark like '.' or ',' or ':', EVERYTHING after it MUST be captured as the 'note'. "
+        "HOWEVER, do NOT treat decimal points within numbers (e.g. '100.5' or '100,5') as notes!"
         "Do not include markdown or explanations. "
         "Interpret 'oldim/sotib oldim/kupил' as INFLOW and 'sotdim/prodal' as OUTFLOW. "
         "Example: 'Ali 1000 usd 12100 rate oldim' => "
