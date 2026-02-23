@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     backup_hour: int = 23
     backup_minute: int = 55
 
-    base_currency_code: str = "UZS"
+    base_currency_code: str = "KGS"
     timezone: str = "Asia/Bishkek"
     
     webapp_url: Optional[str] = None

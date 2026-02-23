@@ -37,8 +37,13 @@ class RuleBasedAIParser:
         client_name = self._extract_client_name(cleaned)
 
         note: Optional[str] = None
+        note_match = re.search(r"[,.:]\s*(.+)", text, re.DOTALL)
+        if note_match:
+            note = note_match.group(1).strip()
+
         if rate is not None:
-            note = f"rate: {_format_decimal(rate)}"
+            rate_text = f"rate: {_format_decimal(rate)}"
+            note = f"{note} | {rate_text}" if note else rate_text
 
         return {
             "amount": amount,
@@ -49,8 +54,34 @@ class RuleBasedAIParser:
         }
 
     def _detect_flow(self, text: str) -> str:
-        outflow_tokens = ["sotdim", "sell", "prodal", "продал", "otdal"]
-        inflow_tokens = ["oldim", "sotib oldim", "buy", "kupil", "купил", "olдим"]
+        outflow_tokens = [
+            "sotdim",
+            "sell",
+            "prodal",
+            "продал",
+            "otdal",
+            "berdim",
+            "chiqim",
+            "chiqdi",
+            "chiqdim",
+            "outflow",
+            "out flow",
+        ]
+        inflow_tokens = [
+            "berdi",
+            "oldim",
+            "oldi",
+            "sotib oldim",
+            "buy",
+            "kupil",
+            "купил",
+            "olдим",
+            "kirdi",
+            "kirim",
+            "keldi",
+            "inflow",
+            "in flow",
+        ]
 
         if any(token in text for token in outflow_tokens):
             return "OUTFLOW"

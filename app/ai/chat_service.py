@@ -90,7 +90,11 @@ class AIChatService:
             "  - 'chiqim' = OUTFLOW\n"
             "  - 'berdim' = men berdim = OUTFLOW\n\n"
             "⚠️ DIQQAT: '[ism] oldi' DOIM OUTFLOW! Chunki client kassadan pul OLDI.\n"
-            "⚠️ '[ism] berdi' DOIM INFLOW! Chunki client kassaga pul BERDI.\n\n"
+            "⚠️ '[ism] berdi' yoki shunchaki 'berdi' DOIM INFLOW (BUY)! Chunki kimdir kassaga pul BERDI (masalan: 'aliakaga 100$ berdi' -> INFLOW, client='aliaka').\n"
+            "⚠️ 'berdim' so'zi DOIM OUTFLOW (SELL) bo'ladi! (masalan: 'aliakaga 100$ berdim' -> OUTFLOW, client='aliaka').\n\n"
+
+            "IZOH (NOTE) QOIDASI:\n"
+            "- Agar xabarda nuqta (.), vergul (,) yoki ikki nuqta (:) qatnashsa, ushbu belgidan keyin kelgan barcha matnni 'note' ga yozing.\n\n"
 
             "VALYUTA QOIDALARI:\n"
             "- 'som', 'сом', 'kgs' = KGS (asosiy valyuta)\n"

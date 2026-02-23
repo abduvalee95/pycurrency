@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 from typing import Union
+from zoneinfo import ZoneInfo
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -125,18 +126,18 @@ async def _handle_create_entry(message: Message, state: FSMContext, data: dict) 
         currency_code = normalize_currency(raw_currency)
 
         if amount <= 0 or currency_code is None or flow_direction not in {"INFLOW", "OUTFLOW"}:
-            await message.answer("❌ AI вернул неверные данные. Попробуйте еще раз.")
+            await message.answer("❌ AI noto'g'ri ma'lumot qaytardi. Qayta urinib ko'ring.")
             return
 
         if not client_name:
-            await message.answer("❌ Имя клиента не найдено. Напишите снова.")
+            await message.answer("❌ Client nomi topilmadi. Qayta yozing.")
             return
 
     except (InvalidOperation, ValueError):
-        await message.answer("❌ AI вернул неверные данные. Попробуйте еще раз.")
+        await message.answer("❌ AI noto'g'ri ma'lumot qaytardi. Qayta urinib ko'ring.")
         return
 
-    direction = "➕ ПРИХОД" if flow_direction == "INFLOW" else "➖ РАСХОД"
+    direction = "📥 KIRIM" if flow_direction == "INFLOW" else "☄️ PACXOД"
     summary = (
         f"📝 Создать запись?\n\n"
         f"{direction}\n"
@@ -158,8 +159,8 @@ async def _handle_create_entry(message: Message, state: FSMContext, data: dict) 
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Подтвердить", callback_data="aichat_create_yes")],
-            [InlineKeyboardButton(text="❌ Отмена", callback_data="aichat_create_no")],
+            [InlineKeyboardButton(text="✅ Tasdiqlash", callback_data="aichat_create_yes")],
+            [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="aichat_create_no")],
         ]
     )
     await message.answer(summary, reply_markup=keyboard)
@@ -183,22 +184,26 @@ async def _handle_delete_entry(message: Message, state: FSMContext, data: dict) 
         await message.answer(f"❌ Запись #{entry_id} не найдена или уже удалена.")
         return
 
-    direction = "➕ ПРИХОД" if entry.flow_direction == "INFLOW" else "➖ РАСХОД"
+    settings = get_settings()
+    tz = ZoneInfo(settings.timezone)
+    local_dt = entry.created_at.astimezone(tz)
+
+    direction = "📥 ПРИХОД" if entry.flow_direction == "INFLOW" else "☄️ РАСХОД"
     summary = (
-        f"🗑 Хотите удалить?\n\n"
+        f"🗑 O'chirmoqchimisiz?\n\n"
         f"#{entry.id} | {direction}\n"
         f"Сумма: {_fmt(entry.amount, entry.currency_code)}\n"
         f"Клиент: {entry.client_name}\n"
         f"Заметка: {entry.note or '-'}\n"
-        f"Дата: {entry.created_at.strftime('%d.%m.%Y %H:%M')}"
+        f"Дата: {local_dt.strftime('%d.%m.%Y %H:%M')}"
     )
 
     await state.update_data(ai_delete_id=entry_id)
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Да, удалить", callback_data="aichat_delete_yes")],
-            [InlineKeyboardButton(text="❌ Нет", callback_data="aichat_delete_no")],
+            [InlineKeyboardButton(text="✅ Ha, o'chir", callback_data="aichat_delete_yes")],
+            [InlineKeyboardButton(text="❌ Yo'q", callback_data="aichat_delete_no")],
         ]
     )
     await message.answer(summary, reply_markup=keyboard)
@@ -234,7 +239,7 @@ async def confirm_ai_create(callback, state: FSMContext):
                 created_by_telegram_id=callback.from_user.id,
             )
         await callback.message.answer(
-            f"✅ Запись #{entry.id} сохранена!\n"
+            f"✅ Entry #{entry.id} saqlandi!\n"
             f"{_fmt(entry.amount, entry.currency_code)} | {entry.flow_direction} | {entry.client_name}"
         )
     except Exception as exc:  # noqa: BLE001
@@ -262,7 +267,7 @@ async def confirm_ai_delete(callback, state: FSMContext):
     data = await state.get_data()
     entry_id = data.get("ai_delete_id")
     if not entry_id:
-        await callback.message.answer("❌ Данные не найдены или уже обработаны.")
+        await callback.message.answer("❌ Ma'lumot topilmadi yoku allaqachon bajarilgan.")
         await callback.answer()
         return
 
@@ -288,5 +293,5 @@ async def cancel_ai_delete(callback, state: FSMContext):
     await callback.message.edit_reply_markup(reply_markup=None)
 
     await state.update_data(ai_delete_id=None)
-    await callback.message.answer("Удаление отменено.")
+    await callback.message.answer("O'chirish bekor qilindi.")
     await callback.answer()

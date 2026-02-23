@@ -76,7 +76,7 @@ async def on_greeting(message: Message) -> None:
 
     if not await _ensure_allowed_message(message):
         return
-    await message.answer("Привет. Я готов. Выберите ➕ Новая запись или 🤖 AI Ассистент.", reply_markup=main_menu_keyboard())
+    await message.answer("Привет. Я готов. Выберите ➕ Новая запись или 📊 Отчеты.", reply_markup=main_menu_keyboard())
 
 
 @router.message(F.text == texts.CANCEL_OPERATION)
@@ -429,7 +429,7 @@ async def show_reports(message: Message) -> None:
 
     lines.append("")
     lines.append("Долги по клиентам (топ 10):")
-    for client_name, currency, debt in debts[:10]:
+    for client_name, currency, debt, last_updated in debts[:10]:
         lines.append(f"  {client_name} [{currency}]: {_fmt(debt, currency)}")
 
     lines.append("")
@@ -488,6 +488,10 @@ async def delete_entry_command(message: Message) -> None:
         await message.answer(f"❌ Запись #{entry_id} не найдена или уже удалена.")
         return
 
+    settings = get_settings()
+    tz = ZoneInfo(settings.timezone)
+    local_dt = entry.created_at.astimezone(tz)
+
     direction = "➕ ПРИХОД" if entry.flow_direction == "INFLOW" else "➖ РАСХОД"
     summary = (
         f"🗑 Хотите удалить?\n\n"
@@ -495,7 +499,7 @@ async def delete_entry_command(message: Message) -> None:
         f"Сумма: {_fmt(entry.amount, entry.currency_code)}\n"
         f"Клиент: {entry.client_name}\n"
         f"Заметка: {entry.note or '-'}\n"
-        f"Дата: {entry.created_at.strftime('%d.%m.%Y %H:%M')}"
+        f"Дата: {local_dt.strftime('%d.%m.%Y %H:%M')}"
     )
 
     keyboard = InlineKeyboardMarkup(

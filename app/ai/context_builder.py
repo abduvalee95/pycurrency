@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Union
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database.models import CashEntry
 
 
@@ -52,9 +54,11 @@ class ChatContextBuilder:
             lines.append("  (bo'sh)")
 
         # 2. Today's entries count
-        today = date.today()
-        start_dt = datetime.combine(today, time.min)
-        end_dt = datetime.combine(today, time.max)
+        settings = get_settings()
+        tz = ZoneInfo(settings.timezone)
+        today = datetime.now(tz).date()
+        start_dt = datetime.combine(today, time.min, tzinfo=tz)
+        end_dt = datetime.combine(today, time.max, tzinfo=tz)
 
         count_result = await session.execute(
             select(func.count(CashEntry.id)).where(
@@ -80,8 +84,9 @@ class ChatContextBuilder:
             for entry in last_entries:
                 direction = "oldim +" if entry.flow_direction == "INFLOW" else "sotdim -"
                 note_str = f" | izoh: {entry.note}" if entry.note else ""
+                local_dt = entry.created_at.astimezone(tz)
                 lines.append(
-                    f"  #{entry.id} | {entry.created_at.strftime('%d.%m %H:%M')} | "
+                    f"  #{entry.id} | {local_dt.strftime('%d.%m %H:%M')} | "
                     f"{direction} {_fmt(entry.amount, entry.currency_code)} | "
                     f"mijoz: {entry.client_name}{note_str}"
                 )

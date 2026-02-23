@@ -218,6 +218,8 @@
               <option value="USD">USD</option>
               <option value="RUB">RUB</option>
               <option value="UZS">UZS</option>
+              <option value="KGS">KGS</option>
+              <option value="EUR">EUR</option>
             </select>
 
             <div style={sectionTitle}>📥 / 📤 Direction</div>
@@ -236,7 +238,7 @@
           <div style={{ ...card, marginTop: 12 }}>
             <div style={{ fontWeight: 800, marginBottom: 8 }}>✅ Hisobot</div>
             <div style={{ marginBottom: 6 }}>
-              <strong>Kunlik foyda:</strong> {Object.keys(dailyProfit).length === 0 ? " - " : ""}
+              <strong>Kunlik:</strong> {Object.keys(dailyProfit).length === 0 ? " - " : ""}
               {Object.entries(dailyProfit).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}>{k}: {v}</span>)}
             </div>
             <div style={{ marginBottom: 6 }}>
@@ -244,14 +246,14 @@
               {Object.entries(balances).map(([k, v]) => <span key={k} style={{ marginRight: 10 }}>{k}: {v}</span>)}
             </div>
             <div style={{ marginBottom: 6 }}>
-              <strong>Client bo'yicha qarz:</strong> {debts.length === 0 ? " - " : ""}
+              <strong>Clientga berilgan:</strong> {debts.length === 0 ? " - " : ""}
               {debts.slice(0, 8).map((row, idx) => (
                 <span key={idx} style={{ marginRight: 10 }}>
                   {row.client_name} [{row.currency_code}]: {row.debt_amount}
                 </span>
               ))}
             </div>
-            <div><strong>Jami kassadagi pul (UZS):</strong> {cashTotal === null ? " - " : cashTotal}</div>
+            <div><strong>Balance (KGS):</strong> {cashTotal === null ? " - " : cashTotal}</div>
           </div>
 
           {warning ? <div style={{ marginTop: 10, color: "var(--danger)", fontWeight: 700 }}>{warning}</div> : null}
@@ -275,7 +277,7 @@
               <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                 <button style={chipBtn} onClick={() => setFlowDirection("INFLOW")}>Set Inflow</button>
                 <button style={chipBtn} onClick={() => setFlowDirection("OUTFLOW")}>Set Outflow</button>
-                <button style={chipBtn} onClick={() => setCurrencyCode("UZS")}>Set UZS</button>
+                <button style={chipBtn} onClick={() => setCurrencyCode("KGS")}>Set KGS</button>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={aiInput} onChange={(e) => setAiInput(e.target.value)} placeholder="1000 usd oldim" style={input} />

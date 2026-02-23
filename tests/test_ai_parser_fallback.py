@@ -13,3 +13,12 @@ def test_fallback_parser_maps_to_inflow_outflow_and_plain_rate_note() -> None:
     assert buy["note"] == "rate: 8900"
     assert sell["flow_direction"] == "OUTFLOW"
     assert sell["note"] == "rate: 9050"
+
+
+def test_fallback_parser_expanded_flow_dictionary() -> None:
+    parser = RuleBasedAIParser()
+
+    assert parser.parse("Azizga 200 usd berdim")["flow_direction"] == "OUTFLOW"
+    assert parser.parse("Sardor 300 usd chiqdi")["flow_direction"] == "OUTFLOW"
+    assert parser.parse("Mik 400 usd kirdi")["flow_direction"] == "INFLOW"
+    assert parser.parse("Ali 500 usd oldi")["flow_direction"] == "INFLOW"
