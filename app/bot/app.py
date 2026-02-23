@@ -9,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.handlers.main import router as main_router
 from app.bot.handlers.ai_chat import router as ai_chat_router
+from app.bot.handlers.admin import router as admin_router
 from app.config import get_settings
 
 
@@ -21,6 +22,7 @@ async def run_bot() -> None:
 
     bot = Bot(token=settings.telegram_bot_token)
     dispatcher = Dispatcher(storage=MemoryStorage())
+    dispatcher.include_router(admin_router)
     dispatcher.include_router(main_router)
     dispatcher.include_router(ai_chat_router)
 
