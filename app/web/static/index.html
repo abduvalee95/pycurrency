@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluent/32/export.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/color/48/minus.png">
     <title>Kassa Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -48,7 +48,7 @@
             <!-- Header -->
             <div class="flex flex-col mb-6">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">📊 Kassa Dashboard</h1>
+                    <h1 class="text-2xl font-bold">📊 Kassa</h1>
                     <button @click="fetchData" class="text-blue-500 flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg active:scale-95 transition-transform">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         Yangilash
@@ -81,9 +81,11 @@
                         <div class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">{{ currency }}</div>
                         <div class="font-bold text-2xl" :class="amount < 0 ? 'text-red-500' : 'text-blue-700 dark:text-blue-300'">
                             <span v-if="amount < 0" class="inline-flex items-center">
-                                <img src="https://img.icons8.com/fluent/32/export.png" class="w-4 h-4 mr-1" />
+                                <img src="https://img.icons8.com/color/48/minus.png" class="w-4 h-4 mr-1" />
                             </span>
-                            <span v-else>+</span>{{ formatNumber(amount) }}
+                            <span v-else class="inline-flex items-center">
+                                <img src="https://img.icons8.com/color/48/plus.png" class="w-4 h-4 mr-1" />
+                            </span>{{ formatNumber(amount) }}
                         </div>
                     </div>
                 </div>
@@ -99,7 +101,7 @@
 
             <!-- Debtors -->
             <div class="card space-y-4" v-if="data.debts && data.debts.length > 0">
-                <h2 class="text-xl font-semibold">🙎‍♂️ Mijoz Qarzlari (Top 10)</h2>
+                <h2 class="text-xl font-semibold">🙎‍♂️ client (Top 10)</h2>
                 <div class="space-y-2">
                     <div v-for="debt in data.debts" :key="debt.client+debt.currency" class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div class="flex flex-col">
@@ -134,9 +136,11 @@
                   class="flex items-center"
                   :class="tx.flow_direction === 'INFLOW' ? 'text-green-600' : 'text-red-500'"
                 >
-                  <template v-if="tx.flow_direction === 'INFLOW'">📥 +</template>
+                  <template v-if="tx.flow_direction === 'INFLOW'">
+                    <img src="https://img.icons8.com/color/48/plus.png" class="w-4 h-4 mr-1" />
+                  </template>
                   <template v-else>
-                    <img src="https://img.icons8.com/fluent/32/export.png" class="w-4 h-4 mr-1" />
+                    <img src="https://img.icons8.com/color/48/minus.png" class="w-4 h-4 mr-1" />
                   </template>
                   {{ formatNumber(tx.amount) }}
                   <span class="text-sm font-normal ml-1"

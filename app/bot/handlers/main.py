@@ -488,7 +488,7 @@ async def delete_entry_command(message: Message) -> None:
         await message.answer(f"❌ Запись #{entry_id} не найдена или уже удалена.")
         return
 
-    direction = "📥 ПРИХОД" if entry.flow_direction == "INFLOW" else "📤 РАСХОД"
+    direction = "➕ ПРИХОД" if entry.flow_direction == "INFLOW" else "➖ РАСХОД"
     summary = (
         f"🗑 Хотите удалить?\n\n"
         f"#{entry.id} | {direction}\n"
@@ -646,7 +646,7 @@ async def quick_entry_command(message: Message) -> None:
     async with db_manager.session_factory() as session:
         entry = await service.create_entry(session, payload, user_id)
 
-    sign = "📥 +" if direction == "INFLOW" else "📤 -"
+    sign = "➕ +" if direction == "INFLOW" else "➖ -"
     note_str = f"\nЗаметка: {note}" if note else ""
     await message.answer(
         f"✅ #{entry.id} сохранена!\n"
@@ -745,7 +745,7 @@ async def edit_entry_command(message: Message) -> None:
         await service.soft_delete_entry(session, entry_id, user_id=user_id)
         new_entry = await service.create_entry(session, updated_payload, user_id)
 
-    sign = "📥 +" if new_entry.flow_direction == "INFLOW" else "📤 -"
+    sign = "➕ +" if new_entry.flow_direction == "INFLOW" else "➖ -"
     await message.answer(
         f"✅ Запись #{entry_id} обновлена → #{new_entry.id}\n"
         f"{sign} {_fmt(new_entry.amount, new_entry.currency_code)} | {new_entry.client_name}\n"

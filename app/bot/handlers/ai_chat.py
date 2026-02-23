@@ -136,7 +136,7 @@ async def _handle_create_entry(message: Message, state: FSMContext, data: dict) 
         await message.answer("❌ AI вернул неверные данные. Попробуйте еще раз.")
         return
 
-    direction = "📥 ПРИХОД" if flow_direction == "INFLOW" else "📤 РАСХОД"
+    direction = "➕ ПРИХОД" if flow_direction == "INFLOW" else "➖ РАСХОД"
     summary = (
         f"📝 Создать запись?\n\n"
         f"{direction}\n"
@@ -183,7 +183,7 @@ async def _handle_delete_entry(message: Message, state: FSMContext, data: dict) 
         await message.answer(f"❌ Запись #{entry_id} не найдена или уже удалена.")
         return
 
-    direction = "📥 ПРИХОД" if entry.flow_direction == "INFLOW" else "📤 РАСХОД"
+    direction = "➕ ПРИХОД" if entry.flow_direction == "INFLOW" else "➖ РАСХОД"
     summary = (
         f"🗑 Хотите удалить?\n\n"
         f"#{entry.id} | {direction}\n"
